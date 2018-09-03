@@ -89,6 +89,10 @@ func (p *LookupPartition) Percent() float64 {
 	return p.percent
 }
 
+func (p *LookupPartition) String() string {
+	return fmt.Sprintf("LookupPartition{name=%s, percent=%f, limit=%d, busy=%d}",
+		p.name, p.percent, atomic.LoadInt32(p.limit), atomic.LoadInt32(p.busy))
+}
 
 // LookupPartitionStrategy defines the strategy for partitioning the limiter by named groups where the allocation of
 // group to percentage is provided up front.
@@ -122,14 +126,17 @@ func NewLookupPartitionStrategyWithMetricRegistry(
 	}
 
 	unknownPartition := NewLookupPartitionWithMetricRegistry("unknown", 0.0, limit, registry)
-
-	return &LookupPartitionStrategy{
+	strategy := &LookupPartitionStrategy{
 		partitions: partitions,
 		unknownPartition: unknownPartition,
 		lookupFunc: lookupFunc,
 		busy: 0,
 		limit: limit,
-	}, nil
+	}
+
+	registry.RegisterGauge(core.METRIC_LIMIT, core.NewIntMetricSupplierWrapper(strategy.Limit))
+
+	return strategy, nil
 }
 
 // TryAcquire a token from a partition
@@ -213,7 +220,7 @@ func (s *LookupPartitionStrategy) BinLimit(key string) (int, error) {
 func (s *LookupPartitionStrategy) String() string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return fmt.Sprintf("LookupPartitionedStrategy{partitions=%v, unknownPartition=%v, limit=%d, busy=%d}",
+	return fmt.Sprintf("LookupPartitionStrategy{partitions=%v, unknownPartition=%v, limit=%d, busy=%d}",
 		s.partitions, s.unknownPartition, s.limit, s.busy)
 }
 
