@@ -4,6 +4,19 @@ import (
 	"context"
 )
 
+// MeasurementInterface defines the contract for tracking a measurement such as a minimum or average of a sample set.
+type MeasurementInterface interface {
+	// Add a single sample and update the internal state.
+	// returns true if the internal state was updated, also return the current value.
+	Add(value float64) (float64, bool)
+
+	// Get the current value.
+	Get() float64
+
+	// Reset the internal state as if no samples were ever added.
+	Reset()
+}
+
 // SampleWindow represents the details of the current sample window
 type SampleWindow interface {
 	// CandidateRTTNanoseconds returns the candidate RTT in the sample window. This is traditionally the minimum rtt.
