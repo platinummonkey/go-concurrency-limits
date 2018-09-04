@@ -2,9 +2,10 @@ package limit
 
 import (
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/core"
 	"math"
 	"sync"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
 // AIMDLimit implements a Loss based dynamic Limit that does an additive increment as long as there are no errors and a

@@ -2,11 +2,12 @@ package limit
 
 import (
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/core"
-	"github.com/platinummonkey/go-concurrency-limits/limit/functions"
 	"math"
 	"math/rand"
 	"sync"
+
+	"github.com/platinummonkey/go-concurrency-limits/limit/functions"
+	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
 // VegasLimit implements a Limiter based on TCP Vegas where the limit increases by alpha if the queue_use is

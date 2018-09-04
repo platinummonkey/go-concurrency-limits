@@ -2,12 +2,13 @@ package limit
 
 import (
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/core"
-	"github.com/platinummonkey/go-concurrency-limits/limit/functions"
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 	"math"
 	"math/rand"
 	"sync"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
+	"github.com/platinummonkey/go-concurrency-limits/limit/functions"
+	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 // Gradient limit implements a concurrency limit algorithm that adjust the limits based on the gradient of change in the

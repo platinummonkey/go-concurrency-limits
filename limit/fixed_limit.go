@@ -2,6 +2,7 @@ package limit
 
 import (
 	"fmt"
+
 	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 

@@ -3,10 +3,11 @@ package strategy
 import (
 	"context"
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/core"
 	"math"
 	"sync"
 	"sync/atomic"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
 // PredicatePartition defines a partition for the PredicatePartitionStrategy
