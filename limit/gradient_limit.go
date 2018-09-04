@@ -33,11 +33,9 @@ type GradientLimit struct {
 	mu sync.RWMutex
 }
 
-const GradientLimitProbeDisabled = -1
-
 func nextProbeCountdown(probeInterval int) int {
-	if probeInterval == GradientLimitProbeDisabled {
-		return GradientLimitProbeDisabled
+	if probeInterval == LimitProbeDisabled {
+		return LimitProbeDisabled
 	}
 	return probeInterval + rand.Int()
 }
@@ -63,7 +61,7 @@ func NewGradientLimitWithRegistry(
 	if maxConcurrency <= 0 {
 		maxConcurrency = 1000
 	}
-	if smoothing < 0.0 {
+	if smoothing < 0.0 || smoothing > 1.0 {
 		smoothing = 0.2
 	}
 	if rttTolerance < 0 {
@@ -128,7 +126,7 @@ func (l *GradientLimit) Update(sample core.SampleWindow) {
 	// Reset or probe for a new noload RTT and a new estimatedLimit.  It's necessary to cut the limit
 	// in half to avoid having the limit drift upwards when the RTT is probed during heavy load.
 	// To avoid decreasing the limit too much we don't allow it to go lower than the queueSize.
-	if l.probeInterval != GradientLimitProbeDisabled {
+	if l.probeInterval != LimitProbeDisabled {
 		l.resetRTTCounter--
 		if l.resetRTTCounter <= 0 {
 			l.resetRTTCounter = nextProbeCountdown(l.probeInterval)
@@ -172,7 +170,7 @@ func (l *GradientLimit) Update(sample core.SampleWindow) {
 		l.logger.Debugf("new limit=%d, minRtt=%d ms, winRtt=%d ms, queueSize=%d, gradient=%0.4f, resetCounter=%d",
 			int(newLimit), rttNoLoad / 1e6, rtt / 1e6, queueSize, gradient, l.resetRTTCounter)
 	}
-	
+
 	l.estimatedLimit = newLimit
 }
 
