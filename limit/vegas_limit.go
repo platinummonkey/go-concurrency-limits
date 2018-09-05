@@ -37,6 +37,22 @@ type VegasLimit struct {
 	mu sync.RWMutex
 }
 
+func NewDefaultVegasLimit(logger Logger, registry core.MetricRegistry) *VegasLimit {
+	return NewVegasLimitWithRegistry(
+		-1,
+		-1,
+		-1,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		-1,
+		logger,
+		registry,
+	)
+}
+
 // NewVegasLimit will create a new VegasLimit.
 func NewVegasLimitWithRegistry(
 	initialLimit int,
@@ -48,7 +64,6 @@ func NewVegasLimitWithRegistry(
 	increaseFunc func(estimatedLimit float64) float64,
 	decreaseFunc func(estimatedLimit float64) float64,
 	probeMultiplier int,
-	probeCountdown int,
 	logger Logger,
 	registry core.MetricRegistry,
 ) *VegasLimit {
@@ -91,6 +106,10 @@ func NewVegasLimitWithRegistry(
 		decreaseFunc = func(limit float64) float64 {
 			return limit - defaultLogFloatFunc(limit)
 		}
+	}
+
+	if logger == nil {
+		logger = NoopLimitLogger{}
 	}
 
 	return &VegasLimit{
