@@ -19,6 +19,7 @@ const (
 	defaultWindowSize = int(100) // Minimum observed samples to filter out sample windows with not enough significant samples
 )
 
+// DefaultListener for
 type DefaultListener struct {
 	currentMaxInFlight int64
 	inFlight *int64
@@ -105,11 +106,11 @@ func NewDefaultLimiterWithDefaults(
 ) (*DefaultLimiter, error) {
 	return NewDefaultLimiter(
 		limit.NewDefaultVegasLimit(logger, registry),
-		strategy,
 		defaultMinWindowTime,
 		defaultMaxWindowTime,
 		defaultMinRTTThreshold,
 		defaultWindowSize,
+		strategy,
 		logger,
 		registry,
 	)
@@ -118,11 +119,11 @@ func NewDefaultLimiterWithDefaults(
 // NewDefaultLimiter creates a new DefaultLimiter.
 func NewDefaultLimiter(
 	limit core.Limit,
-	strategy core.Strategy,
 	minWindowTime int64,
 	maxWindowTime int64,
 	minRTTThreshold int64,
 	windowSize int,
+	strategy core.Strategy,
 	logger limit.Logger,
 	registry core.MetricRegistry,
 ) (*DefaultLimiter, error) {
