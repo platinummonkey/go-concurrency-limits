@@ -3,11 +3,9 @@ package strategy
 import (
 	"context"
 	"fmt"
+	"github.com/platinummonkey/go-concurrency-limits/core"
 	"math"
 	"sync"
-	"sync/atomic"
-
-	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
 // PredicatePartition defines a partition for the PredicatePartitionStrategy
@@ -17,29 +15,25 @@ type PredicatePartition struct {
 	percent float64
 	MetricSampleListener core.MetricSampleListener
 	predicate func(ctx context.Context) bool
-	limit *int32
-	busy *int32
+	limit int32
+	busy int32
+
+	mu sync.RWMutex
 }
 
 
 func NewPredicatePartitionWithMetricRegistry(
 	name string,
 	percent float64,
-	limit int32,
 	predicateFunc func(ctx context.Context) bool,
 	registry core.MetricRegistry,
 ) PredicatePartition {
-	pLimit := int32(limit)
-	if pLimit < 1 {
-		pLimit = 1
-	}
-	busy := int32(0)
 	p := PredicatePartition{
 		name: name,
 		percent: percent,
 		predicate: predicateFunc,
-		limit: &pLimit,
-		busy: &busy,
+		limit: 1,
+		busy: 0,
 	}
 	sampleListener := registry.RegisterDistribution(core.METRIC_INFLIGHT, PARTITION_TAG_NAME, name)
 	registry.RegisterGauge(core.METRIC_PARTITION_LIMIT, core.NewIntMetricSupplierWrapper(p.Limit), PARTITION_TAG_NAME, name)
@@ -49,12 +43,16 @@ func NewPredicatePartitionWithMetricRegistry(
 
 // BusyCount will return the current limit
 func (p *PredicatePartition) BusyCount() int {
-	return int(atomic.LoadInt32(p.busy))
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return int(p.busy)
 }
 
 // Limit will return the current limit
 func (p *PredicatePartition) Limit() int {
-	return int(atomic.LoadInt32(p.limit))
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return int(p.limit)
 }
 
 // UpdateLimit will update the current limit
@@ -62,27 +60,35 @@ func (p *PredicatePartition) Limit() int {
 // is at least 1.  With this technique the sum of bin limits may end up being
 // higher than the concurrency limit.
 func (p *PredicatePartition) UpdateLimit(totalLimit int32) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	limit := int32(math.Max(1, math.Ceil(float64(totalLimit) * p.percent)))
-	atomic.StoreInt32(p.limit, limit)
+	p.limit = limit
 }
 
 // IsLimitExceeded will return true of the number of requests in flight >= limit
 // note: not thread safe.
 func (p *PredicatePartition) IsLimitExceeded() bool {
-	return atomic.LoadInt32(p.limit) >= atomic.LoadInt32(p.busy)
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.busy >= p.limit
 }
 
 // Acquire from the worker pool
 // note: not to be used directly, not thread safe.
 func (p *PredicatePartition) Acquire() {
-	busyCount := atomic.AddInt32(p.busy, 1)
-	p.MetricSampleListener.AddSample(float64(busyCount))
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.busy++
+	p.MetricSampleListener.AddSample(float64(p.busy))
 }
 
 // Release from the worker pool
 // note: not to be used directly, not thread safe.
 func (p *PredicatePartition) Release() {
-	atomic.AddInt32(p.busy, -1)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.busy--
 }
 
 // Name will return the partition name, these are immutable.
@@ -97,7 +103,7 @@ func (p *PredicatePartition) Percent() float64 {
 
 func (p *PredicatePartition) String() string {
 	return fmt.Sprintf("PredicatePartition{name=%s, percent=%f, limit=%d, busy=%d}",
-		p.name, p.percent, atomic.LoadInt32(p.limit), atomic.LoadInt32(p.busy))
+		p.name, p.percent, p.limit, p.busy)
 }
 
 
@@ -132,6 +138,7 @@ func NewPredicatePartitionStrategyWithMetricRegistry(
 	sum := float64(0)
 	for _, v := range partitions {
 		sum += v.Percent()
+		v.UpdateLimit(limit)
 	}
 	if sum > 1.0 {
 		return nil, fmt.Errorf("sum of percentages must be <= 1.0")
@@ -149,14 +156,14 @@ func NewPredicatePartitionStrategyWithMetricRegistry(
 }
 
 // TryAcquire a token from a partition
-func (s *PredicatePartitionStrategy) TryAcquire(ctx context.Context) (token core.StrategyToken, ok bool) {
+func (s *PredicatePartitionStrategy) TryAcquire(ctx context.Context) (core.StrategyToken, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for _, p := range s.partitions {
 		if p.predicate(ctx) {
 			if s.busy >= s.limit && p.IsLimitExceeded() {
 				// limit exceeded on this partition
-				break
+				return core.NewNotAcquiredStrategyToken(int(s.busy)), false
 			}
 			s.busy++
 			p.Acquire()
@@ -188,6 +195,7 @@ func (s *PredicatePartitionStrategy) SetLimit(limit int) {
 			p.UpdateLimit(int32(limit))
 		}
 	}
+	s.limit = int32(limit)
 }
 
 // BusyCount will return the current busy count.
