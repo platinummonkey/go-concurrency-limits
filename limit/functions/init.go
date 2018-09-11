@@ -27,7 +27,7 @@ func initSqrtFunc() {
 	}
 	for i := 0; i < val; i++ {
 		// pre-compute the integer value with a min of 1 up to val samples.
-		sqrtRootLookup[i] = int(math.Max(1, float64(int(math.Sqrt(float64(i))))))
+		sqrtRootLookup = append(sqrtRootLookup, int(math.Max(1, float64(int(math.Sqrt(float64(i)))))))
 	}
 }
 
@@ -47,6 +47,6 @@ func initLog10RootFunc() {
 	}
 	for i := 0; i < val; i++ {
 		// pre-compute the integer value with a min of 1 up to val samples.
-		log10RootLookup[i] = int(math.Max(1, float64(int(math.Log10(float64(i))))))
+		log10RootLookup = append(log10RootLookup, int(math.Max(1, float64(int(math.Log10(float64(i)))))))
 	}
 }
