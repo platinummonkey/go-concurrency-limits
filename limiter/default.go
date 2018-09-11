@@ -3,6 +3,7 @@ package limiter
 import (
 	"context"
 	"fmt"
+	"github.com/platinummonkey/go-concurrency-limits/measurements"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -39,7 +40,7 @@ func (l *DefaultListener) OnSuccess() {
 	if rtt < l.minRTTThreshold {
 		return
 	}
-	_, current := l.limiter.updateAndGetSample(func(window ImmutableSampleWindow) ImmutableSampleWindow {
+	_, current := l.limiter.updateAndGetSample(func(window measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow {
 		return *(window.AddSample(rtt, int(l.currentMaxInFlight)))
 	})
 
@@ -49,7 +50,7 @@ func (l *DefaultListener) OnSuccess() {
 		defer l.limiter.mu.Unlock()
 		if endTime > l.limiter.nextUpdateTime {
 			if l.limiter.isWindowReady(current) {
-				l.limiter.sample = NewImmutableSampleWindow(0, 0, 0, 0, false)
+				l.limiter.sample = measurements.NewImmutableSampleWindow(0, 0, 0, 0, false)
 				minWindowTime := current.CandidateRTTNanoseconds() * 2
 				if l.limiter.minWindowTime > minWindowTime {
 					minWindowTime = l.limiter.minWindowTime
@@ -75,7 +76,7 @@ func (l *DefaultListener) OnIgnore() {
 func (l *DefaultListener) OnDropped() {
 	atomic.AddInt64(l.inFlight, -1)
 	l.token.Release()
-	l.limiter.updateAndGetSample(func(window ImmutableSampleWindow) ImmutableSampleWindow {
+	l.limiter.updateAndGetSample(func(window measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow {
 		return *(window.AddDroppedSample(int(l.currentMaxInFlight)))
 	})
 }
@@ -92,7 +93,7 @@ type DefaultLimiter struct {
 	logger limit.Logger
 	registry core.MetricRegistry
 
-	sample *ImmutableSampleWindow
+	sample *measurements.ImmutableSampleWindow
 	inFlight *int64
 	nextUpdateTime int64
 	mu sync.RWMutex
@@ -187,8 +188,8 @@ func (l *DefaultLimiter) Acquire(ctx context.Context) (listener core.Listener, o
 }
 
 func (l *DefaultLimiter) updateAndGetSample(
-	f func(sample ImmutableSampleWindow) ImmutableSampleWindow,
-) (before ImmutableSampleWindow, after ImmutableSampleWindow) {
+	f func(sample measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow,
+) (before measurements.ImmutableSampleWindow, after measurements.ImmutableSampleWindow) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	before = *l.sample
@@ -197,7 +198,7 @@ func (l *DefaultLimiter) updateAndGetSample(
 	return before, after
 }
 
-func (l *DefaultLimiter) isWindowReady(sample ImmutableSampleWindow) bool {
+func (l *DefaultLimiter) isWindowReady(sample measurements.ImmutableSampleWindow) bool {
 	return sample.CandidateRTTNanoseconds() < math.MaxInt64 && sample.SampleCount() > l.windowSize
 }
 
