@@ -87,7 +87,7 @@ func NewGradientLimitWithRegistry(
 		rttTolerance: rttTolerance,
 		probeInterval: probeInterval,
 		resetRTTCounter: nextProbeCountdown(probeInterval),
-		rttNoLoadMeasurement: &measurements.MaximumMeasurement{},
+		rttNoLoadMeasurement: &measurements.MinimumMeasurement{},
 		logger: logger,
 		registry: registry,
 

@@ -1,4 +1,4 @@
-package limiter
+package measurements
 
 import (
 	"fmt"
@@ -12,6 +12,10 @@ type ImmutableSampleWindow struct {
 	sampleCount int
 	sum int64
 	didDrop bool
+}
+
+func NewDefaultImmutableSampleWindow() *ImmutableSampleWindow {
+	return NewImmutableSampleWindow(math.MaxInt64, 0, 0, 0, false)
 }
 
 func NewImmutableSampleWindow(
