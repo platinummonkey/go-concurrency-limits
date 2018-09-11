@@ -214,7 +214,7 @@ func (l *LifoBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 	}
 }
 
-func (l *LifoBlockingLimiter) Acquire(ctx context.Context) (listener core.Listener, ok bool) {
+func (l *LifoBlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	panic("implement me")
 }
 

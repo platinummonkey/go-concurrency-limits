@@ -53,6 +53,22 @@ func NewDefaultVegasLimit(logger Logger, registry core.MetricRegistry) *VegasLim
 	)
 }
 
+func NewDefaultVegasLimitWithLimit(initialLimit int, logger Logger, registry core.MetricRegistry) *VegasLimit {
+	return NewVegasLimitWithRegistry(
+		initialLimit,
+		-1,
+		-1,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
+		-1,
+		logger,
+		registry,
+	)
+}
+
 // NewVegasLimit will create a new VegasLimit.
 func NewVegasLimitWithRegistry(
 	initialLimit int,

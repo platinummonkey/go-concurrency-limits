@@ -163,7 +163,7 @@ func NewDefaultLimiter(
 	}, nil
 }
 
-func (l *DefaultLimiter) Acquire(ctx context.Context) (listener core.Listener, ok bool) {
+func (l *DefaultLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -189,11 +189,11 @@ func (l *DefaultLimiter) Acquire(ctx context.Context) (listener core.Listener, o
 
 func (l *DefaultLimiter) updateAndGetSample(
 	f func(sample measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow,
-) (before measurements.ImmutableSampleWindow, after measurements.ImmutableSampleWindow) {
+) (measurements.ImmutableSampleWindow, measurements.ImmutableSampleWindow) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	before = *l.sample
-	after = f(before)
+	before := *l.sample
+	after := f(before)
 	l.sample = &after
 	return before, after
 }
@@ -211,7 +211,11 @@ func (l *DefaultLimiter) EstimatedLimit() int {
 func (l DefaultLimiter) String() string {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
+	rttCandidate := int64(-1)
+	if l.sample != nil {
+		rttCandidate = l.sample.CandidateRTTNanoseconds() / 1000
+	}
 	return fmt.Sprintf(
 		"DefaultLimiter{RTTCandidate=%d ms, maxInFlight=%d, limit=%d, strategy=%v}",
-		l.sample.CandidateRTTNanoseconds() / 1000, l.inFlight, l.limit, l.strategy)
+		rttCandidate, l.inFlight, l.limit, l.strategy)
 }

@@ -16,7 +16,6 @@ type BlockingListener struct {
 
 func (l *BlockingListener) unblock() {
 	l.c.Broadcast()
-	l.c.L.Unlock()
 }
 
 func (l *BlockingListener) OnDropped() {
@@ -68,14 +67,15 @@ func (l *BlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 	}
 }
 
-func (l *BlockingLimiter) Acquire(ctx context.Context) (listener core.Listener, ok bool) {
+func (l *BlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	delegateListener := l.tryAcquire(ctx)
-	listener = &BlockingListener{
+	if delegateListener == nil {
+		return nil, false
+	}
+	return &BlockingListener{
 		delegateListener: delegateListener,
 		c: l.c,
-	}
-	ok = true
-	return
+	}, true
 }
 
 func (l BlockingLimiter) String() string {
