@@ -17,6 +17,20 @@ type AIMDLimit struct {
 	mu sync.RWMutex
 }
 
+func NewDefaultAIMLimit() *AIMDLimit {
+	return NewAIMDLimit(10, 0.9)
+}
+
+func NewAIMDLimit(
+	initialLimit int,
+	backOffRatio float64,
+) *AIMDLimit {
+	return &AIMDLimit{
+		limit: initialLimit,
+		backOffRatio: backOffRatio,
+	}
+}
+
 func (l *AIMDLimit) EstimatedLimit() int {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
