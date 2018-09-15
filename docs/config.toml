@@ -1,0 +1,4 @@
+baseURL = "http://go-concurrency-limits.github.io/"
+languageCode = "en-us"
+title = "Go Concurrency Limit"
+theme = "hugo-theme-learn"
