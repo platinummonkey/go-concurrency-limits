@@ -1,0 +1,15 @@
+language: go
+go:
+  - "1.10"
+  - "1.11"
+  - master
+deploy:
+  provider: pages
+  skip-cleanup: true
+  github-token: $GITHUB_TOKEN
+  keep-history: true
+  on:
+    branch: master
+  local-dir: docs
+script: go test -v -coverprofile=cover.out ./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers
+after_script: go tool cover -func=cover.out
