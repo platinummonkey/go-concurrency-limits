@@ -23,6 +23,10 @@ func (l NoopLimitLogger) IsDebugEnabled() bool {
 	return false
 }
 
+func (l NoopLimitLogger) String() string {
+	return "NoopLimitLogger{}"
+}
+
 type BuiltinLimitLogger struct{}
 
 func (l BuiltinLimitLogger) Debugf(msg string, params ...interface{}) {
@@ -31,6 +35,10 @@ func (l BuiltinLimitLogger) Debugf(msg string, params ...interface{}) {
 
 func (l BuiltinLimitLogger) IsDebugEnabled() bool {
 	return true
+}
+
+func (l BuiltinLimitLogger) String() string {
+	return "BuiltinLimitLogger{}"
 }
 
 // TracedLimit implements core.Limit but adds some additional logging
@@ -59,4 +67,8 @@ func (l *TracedLimit) Update(sample core.SampleWindow) {
 	l.logger.Debugf("sampleCount=%d, maxInFlight=%d, minRtt=%d ms",
 		sample.SampleCount(), sample.MaxInFlight(), sample.CandidateRTTNanoseconds()/1e6)
 	l.limit.Update(sample)
+}
+
+func (l TracedLimit) String() string {
+	return fmt.Sprintf("TracedLimit{limit=%v, logger=%v}", l.limit, l.logger)
 }

@@ -112,7 +112,6 @@ func (l *GradientLimit) RTTNoLoad() int64 {
 func (l *GradientLimit) Update(sample core.SampleWindow) {
 	if sample.CandidateRTTNanoseconds() <= 0 {
 		panic(fmt.Sprintf("rtt must be >0 but got %d", sample.CandidateRTTNanoseconds()))
-		return
 	}
 
 	l.mu.Lock()
@@ -175,7 +174,7 @@ func (l *GradientLimit) Update(sample core.SampleWindow) {
 	l.estimatedLimit = newLimit
 }
 
-func (l GradientLimit) String() string {
+func (l *GradientLimit) String() string {
 	return fmt.Sprintf("GradientLimit{limit=%d, rttNoLoad=%d ms}",
 		l.EstimatedLimit(), l.RTTNoLoad()/1e6)
 }

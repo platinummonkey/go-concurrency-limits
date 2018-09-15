@@ -54,6 +54,6 @@ func (l *AIMDLimit) BackOffRatio() float64 {
 	return l.backOffRatio
 }
 
-func (l AIMDLimit) String() string {
+func (l *AIMDLimit) String() string {
 	return fmt.Sprintf("AIMDLimit{limit=%d, backOffRatio=%0.4f}", l.EstimatedLimit(), l.BackOffRatio())
 }

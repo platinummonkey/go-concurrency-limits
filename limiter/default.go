@@ -208,7 +208,7 @@ func (l *DefaultLimiter) EstimatedLimit() int {
 	return l.limit.EstimatedLimit()
 }
 
-func (l DefaultLimiter) String() string {
+func (l *DefaultLimiter) String() string {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	rttCandidate := int64(-1)

@@ -24,7 +24,7 @@ func makeTestPartitions() []*PredicatePartition {
 		core.EmptyMetricRegistryInstance,
 	)
 
-	return []*PredicatePartition{&batchPartition, &livePartition}
+	return []*PredicatePartition{batchPartition, livePartition}
 }
 
 func TestPredicatePartition(t *testing.T) {

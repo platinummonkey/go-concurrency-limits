@@ -235,7 +235,7 @@ func (l *VegasLimit) RTTNoLoad() int64 {
 	return l.rttNoLoad
 }
 
-func (l VegasLimit) String() string {
+func (l *VegasLimit) String() string {
 	return fmt.Sprintf("VegasLimit{limit=%d, rttNoLoad=%d ms}",
 		l.EstimatedLimit(), l.RTTNoLoad())
 }

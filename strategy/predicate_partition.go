@@ -26,7 +26,7 @@ func NewPredicatePartitionWithMetricRegistry(
 	percent float64,
 	predicateFunc func(ctx context.Context) bool,
 	registry core.MetricRegistry,
-) PredicatePartition {
+) *PredicatePartition {
 	p := PredicatePartition{
 		name:      name,
 		percent:   percent,
@@ -37,7 +37,7 @@ func NewPredicatePartitionWithMetricRegistry(
 	sampleListener := registry.RegisterDistribution(core.METRIC_INFLIGHT, PARTITION_TAG_NAME, name)
 	registry.RegisterGauge(core.METRIC_PARTITION_LIMIT, core.NewIntMetricSupplierWrapper(p.Limit), PARTITION_TAG_NAME, name)
 	p.MetricSampleListener = sampleListener
-	return p
+	return &p
 }
 
 // BusyCount will return the current limit

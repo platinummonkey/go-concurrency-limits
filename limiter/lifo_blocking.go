@@ -217,7 +217,7 @@ func (l *LifoBlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool)
 	panic("implement me")
 }
 
-func (l LifoBlockingLimiter) String() string {
+func (l *LifoBlockingLimiter) String() string {
 	return fmt.Sprintf("LifoBlockingLimiter{delegate=%v, maxBacklogSize=%d, maxBacklogTimeout=%v}",
 		l.delegate, l.maxBacklogSize, l.maxBacklogTimeout)
 }
