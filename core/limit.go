@@ -40,8 +40,9 @@ type Limit interface {
 	Update(sample SampleWindow)
 }
 
+// Listener implements token listener for callback to the limiter when and how it should be released.
 type Listener interface {
-	// OnSuccess is called as a aotification that the operation succeeded and internally measured latency should be
+	// OnSuccess is called as a notification that the operation succeeded and internally measured latency should be
 	// used as an RTT sample.
 	OnSuccess()
 	// OnIgnore is called to indicate the operation failed before any meaningful RTT measurement could be made and

@@ -17,10 +17,12 @@ type AIMDLimit struct {
 	mu sync.RWMutex
 }
 
+// NewDefaultAIMLimit will create a default AIMDLimit.
 func NewDefaultAIMLimit() *AIMDLimit {
 	return NewAIMDLimit(10, 0.9)
 }
 
+// NewAIMDLimit will create a new AIMDLimit.
 func NewAIMDLimit(
 	initialLimit int,
 	backOffRatio float64,
@@ -31,12 +33,14 @@ func NewAIMDLimit(
 	}
 }
 
+// EstimatedLimit returns the current estimated limit.
 func (l *AIMDLimit) EstimatedLimit() int {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return l.limit
 }
 
+// Update the concurrency limit using a new rtt sample.
 func (l *AIMDLimit) Update(sample core.SampleWindow) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -48,6 +52,7 @@ func (l *AIMDLimit) Update(sample core.SampleWindow) {
 	return
 }
 
+// BackOffRatio return the current back-off-ratio for the AIMDLimit
 func (l *AIMDLimit) BackOffRatio() float64 {
 	l.mu.RLock()
 	defer l.mu.RUnlock()

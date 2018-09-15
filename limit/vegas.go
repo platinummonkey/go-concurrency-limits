@@ -37,6 +37,7 @@ type VegasLimit struct {
 	mu       sync.RWMutex
 }
 
+// NewDefaultVegasLimit returns a new default VegasLimit.
 func NewDefaultVegasLimit(logger Logger, registry core.MetricRegistry) *VegasLimit {
 	return NewVegasLimitWithRegistry(
 		-1,
@@ -53,6 +54,7 @@ func NewDefaultVegasLimit(logger Logger, registry core.MetricRegistry) *VegasLim
 	)
 }
 
+// NewDefaultVegasLimitWithLimit creates a new VegasLimit.
 func NewDefaultVegasLimitWithLimit(initialLimit int, logger Logger, registry core.MetricRegistry) *VegasLimit {
 	return NewVegasLimitWithRegistry(
 		initialLimit,
@@ -69,7 +71,7 @@ func NewDefaultVegasLimitWithLimit(initialLimit int, logger Logger, registry cor
 	)
 }
 
-// NewVegasLimit will create a new VegasLimit.
+// NewVegasLimitWithRegistry will create a new VegasLimit.
 func NewVegasLimitWithRegistry(
 	initialLimit int,
 	maxConcurrency int,
@@ -139,7 +141,7 @@ func NewVegasLimitWithRegistry(
 		smoothing:         smoothing,
 		probeMultipler:    probeMultiplier,
 		probeCountdown:    nextVegasProbeCountdown(probeMultiplier, float64(initialLimit)),
-		rttSampleListener: registry.RegisterDistribution(core.METRIC_MIN_RTT),
+		rttSampleListener: registry.RegisterDistribution(core.MetricMinRTT),
 		registry:          registry,
 		logger:            logger,
 	}
@@ -154,12 +156,14 @@ func nextVegasProbeCountdown(probeMultiplier int, estimatedLimit float64) int {
 	return rand.Intn(maxRange) + maxRange // return roughly [maxVal / 2, maxVal]
 }
 
+// EstimatedLimit returns the current estimated limit.
 func (l *VegasLimit) EstimatedLimit() int {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return int(l.estimatedLimit)
 }
 
+// Update the concurrency limit using a new rtt sample.
 func (l *VegasLimit) Update(sample core.SampleWindow) {
 	rtt := sample.CandidateRTTNanoseconds()
 	if rtt <= 0 {
@@ -229,6 +233,7 @@ func (l *VegasLimit) updateEstimatedLimit(sample core.SampleWindow, rtt int64) {
 	l.estimatedLimit = newLimit
 }
 
+// RTTNoLoad returns the current RTT No Load value.
 func (l *VegasLimit) RTTNoLoad() int64 {
 	l.mu.RLock()
 	defer l.mu.RUnlock()

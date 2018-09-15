@@ -11,6 +11,7 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/strategy"
 )
 
+// ResponseType is the type of token release that should be specified to the limiter algorithm.
 type ResponseType int
 
 const (
@@ -22,7 +23,12 @@ const (
 	ResponseTypeDropped
 )
 
+// ClientResponseClassifier is a method definition for defining custom response types to the limiter algorithm to
+// correctly handle certain types of errors or embedded data.
 type ClientResponseClassifier func(ctx context.Context, method string, req, reply interface{}, err error) ResponseType
+
+// ServerResponseClassifier is a method definition for defining custom response types to the limiter algorithm to
+// correctly handle certain types of errors or embedded data.
 type ServerResponseClassifier func(
 	ctx context.Context, req interface{}, info *golangGrpc.UnaryServerInfo, resp interface{}, err error,
 ) ResponseType

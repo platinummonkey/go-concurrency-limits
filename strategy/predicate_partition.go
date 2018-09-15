@@ -34,8 +34,8 @@ func NewPredicatePartitionWithMetricRegistry(
 		limit:     1,
 		busy:      0,
 	}
-	sampleListener := registry.RegisterDistribution(core.METRIC_INFLIGHT, PARTITION_TAG_NAME, name)
-	registry.RegisterGauge(core.METRIC_PARTITION_LIMIT, core.NewIntMetricSupplierWrapper(p.Limit), PARTITION_TAG_NAME, name)
+	sampleListener := registry.RegisterDistribution(core.MetricInFlight, PARTITION_TAG_NAME, name)
+	registry.RegisterGauge(core.MetricPartitionLimit, core.NewIntMetricSupplierWrapper(p.Limit), PARTITION_TAG_NAME, name)
 	p.MetricSampleListener = sampleListener
 	return &p
 }
@@ -148,7 +148,7 @@ func NewPredicatePartitionStrategyWithMetricRegistry(
 		limit:      limit,
 	}
 
-	registry.RegisterGauge(core.METRIC_LIMIT, core.NewIntMetricSupplierWrapper(strategy.Limit))
+	registry.RegisterGauge(core.MetricLimit, core.NewIntMetricSupplierWrapper(strategy.Limit))
 
 	return strategy, nil
 }

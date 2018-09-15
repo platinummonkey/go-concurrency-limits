@@ -6,9 +6,10 @@ type MetricSampleListener interface {
 	AddSample(value float64)
 }
 
-// EmptydMetricSampleListener implements a sample listener that ignores everything.
+// EmptyMetricSampleListener implements a sample listener that ignores everything.
 type EmptyMetricSampleListener struct{}
 
+// AddSample will add a metric sample to this listener
 func (*EmptyMetricSampleListener) AddSample(value float64) {
 	// noop
 }
@@ -49,10 +50,12 @@ type EmptyMetricRegistry struct{}
 // EmptyMetricRegistryInstance is a singleton empty metric registry instance.
 var EmptyMetricRegistryInstance = &EmptyMetricRegistry{}
 
+// RegisterDistribution will register a distribution sample to this registry
 func (*EmptyMetricRegistry) RegisterDistribution(ID string, tagNameValuePairs ...string) MetricSampleListener {
 	return &EmptyMetricSampleListener{}
 }
 
+// RegisterGauge will register a gauge sample to this registry
 func (*EmptyMetricRegistry) RegisterGauge(ID string, supplier MetricSupplier, tagNameValuePairs ...string) {
 	// noop
 }

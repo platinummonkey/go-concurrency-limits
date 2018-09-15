@@ -26,14 +26,14 @@ func NewSimpleStrategyWithMetricRegistry(limit int, registry core.MetricRegistry
 	}
 	currentLimit := int32(limit)
 	inFlight := int32(0)
-	listener := registry.RegisterDistribution(core.METRIC_INFLIGHT, tags...)
+	listener := registry.RegisterDistribution(core.MetricInFlight, tags...)
 	strategy := &SimpleStrategy{
 		limit:          &currentLimit,
 		inFlight:       &inFlight,
 		metricListener: listener,
 	}
 
-	registry.RegisterGauge(core.METRIC_LIMIT, core.NewIntMetricSupplierWrapper(strategy.GetLimit), tags...)
+	registry.RegisterGauge(core.MetricLimit, core.NewIntMetricSupplierWrapper(strategy.GetLimit), tags...)
 	return strategy
 }
 

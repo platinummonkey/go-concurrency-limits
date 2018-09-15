@@ -11,7 +11,7 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
-// Gradient limit implements a concurrency limit algorithm that adjust the limits based on the gradient of change in the
+// GradientLimit implements a concurrency limit algorithm that adjust the limits based on the gradient of change in the
 // samples minimum RTT and absolute minimum RTT allowing for a queue of square root of the current limit.
 // Why square root?  Because it's better than a fixed queue size that becomes too small for large limits but still
 // prevents the limit from growing too much by slowing down growth as the limit grows.
@@ -91,24 +91,27 @@ func NewGradientLimitWithRegistry(
 		logger:               logger,
 		registry:             registry,
 
-		minRTTSampleListener:       registry.RegisterDistribution(core.METRIC_MIN_RTT),
-		minWindowRTTSampleListener: registry.RegisterDistribution(core.METRIC_WINDOW_MIN_RTT),
-		queueSizeSampleListener:    registry.RegisterDistribution(core.METRIC_WINDOW_QUEUE_SIZE),
+		minRTTSampleListener:       registry.RegisterDistribution(core.MetricMinRTT),
+		minWindowRTTSampleListener: registry.RegisterDistribution(core.MetricWindowMinRTT),
+		queueSizeSampleListener:    registry.RegisterDistribution(core.MetricWindowQueueSize),
 	}
 }
 
+// EstimatedLimit returns the current estimated limit.
 func (l *GradientLimit) EstimatedLimit() int {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return int(l.estimatedLimit)
 }
 
+// RTTNoLoad returns the current RTT No Load value.
 func (l *GradientLimit) RTTNoLoad() int64 {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
 	return int64(l.rttNoLoadMeasurement.Get())
 }
 
+// Update the concurrency limit using a new rtt sample.
 func (l *GradientLimit) Update(sample core.SampleWindow) {
 	if sample.CandidateRTTNanoseconds() <= 0 {
 		panic(fmt.Sprintf("rtt must be >0 but got %d", sample.CandidateRTTNanoseconds()))
