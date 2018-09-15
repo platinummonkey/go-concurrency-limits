@@ -7,11 +7,11 @@ import (
 
 // ImmutableSampleWindow is used to track immutable samples atomically.
 type ImmutableSampleWindow struct {
-	minRTT int64
+	minRTT      int64
 	maxInFlight int
 	sampleCount int
-	sum int64
-	didDrop bool
+	sum         int64
+	didDrop     bool
 }
 
 func NewDefaultImmutableSampleWindow() *ImmutableSampleWindow {
@@ -29,11 +29,11 @@ func NewImmutableSampleWindow(
 		minRTT = math.MaxInt64
 	}
 	return &ImmutableSampleWindow{
-		minRTT: minRTT,
-		sum: sum,
+		minRTT:      minRTT,
+		sum:         sum,
 		maxInFlight: maxInFlight,
 		sampleCount: sampleCount,
-		didDrop: didDrop,
+		didDrop:     didDrop,
 	}
 }
 
@@ -46,7 +46,7 @@ func (s *ImmutableSampleWindow) AddSample(rtt int64, maxInFlight int) *Immutable
 	if maxInFlight < s.maxInFlight {
 		maxInFlight = s.maxInFlight
 	}
-	return NewImmutableSampleWindow(minRTT, s.sum + rtt, maxInFlight, s.sampleCount + 1, false)
+	return NewImmutableSampleWindow(minRTT, s.sum+rtt, maxInFlight, s.sampleCount+1, false)
 }
 
 // AddDroppedSample will create a new immutable sample that was dropped.

@@ -11,16 +11,15 @@ import (
 // PredicatePartition defines a partition for the PredicatePartitionStrategy
 // Note: generally speaking you shouldn't use this directly, instead use the higher level PredicatePartitionStrategy
 type PredicatePartition struct {
-	name string
-	percent float64
+	name                 string
+	percent              float64
 	MetricSampleListener core.MetricSampleListener
-	predicate func(ctx context.Context) bool
-	limit int32
-	busy int32
+	predicate            func(ctx context.Context) bool
+	limit                int32
+	busy                 int32
 
 	mu sync.RWMutex
 }
-
 
 func NewPredicatePartitionWithMetricRegistry(
 	name string,
@@ -29,11 +28,11 @@ func NewPredicatePartitionWithMetricRegistry(
 	registry core.MetricRegistry,
 ) PredicatePartition {
 	p := PredicatePartition{
-		name: name,
-		percent: percent,
+		name:      name,
+		percent:   percent,
 		predicate: predicateFunc,
-		limit: 1,
-		busy: 0,
+		limit:     1,
+		busy:      0,
 	}
 	sampleListener := registry.RegisterDistribution(core.METRIC_INFLIGHT, PARTITION_TAG_NAME, name)
 	registry.RegisterGauge(core.METRIC_PARTITION_LIMIT, core.NewIntMetricSupplierWrapper(p.Limit), PARTITION_TAG_NAME, name)
@@ -62,7 +61,7 @@ func (p *PredicatePartition) Limit() int {
 func (p *PredicatePartition) UpdateLimit(totalLimit int32) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	limit := int32(math.Max(1, math.Ceil(float64(totalLimit) * p.percent)))
+	limit := int32(math.Max(1, math.Ceil(float64(totalLimit)*p.percent)))
 	p.limit = limit
 }
 
@@ -106,7 +105,6 @@ func (p *PredicatePartition) String() string {
 		p.name, p.percent, p.limit, p.busy)
 }
 
-
 // PredicatePartitionStrategy is a concurrency limiter that guarantees a certain percentage of the limit to specific
 // callers while allowing callers to borrow from underutilized callers.
 //
@@ -120,8 +118,8 @@ func (p *PredicatePartition) String() string {
 type PredicatePartitionStrategy struct {
 	partitions []*PredicatePartition
 
-	mu sync.RWMutex
-	busy int32
+	mu    sync.RWMutex
+	busy  int32
 	limit int32
 }
 
@@ -146,8 +144,8 @@ func NewPredicatePartitionStrategyWithMetricRegistry(
 
 	strategy := &PredicatePartitionStrategy{
 		partitions: partitions,
-		busy: 0,
-		limit: limit,
+		busy:       0,
+		limit:      limit,
 	}
 
 	registry.RegisterGauge(core.METRIC_LIMIT, core.NewIntMetricSupplierWrapper(strategy.Limit))
@@ -216,7 +214,7 @@ func (s *PredicatePartitionStrategy) Limit() int {
 func (s *PredicatePartitionStrategy) BinBusyCount(idx int) (int, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if idx < 0 || idx - 1 > len(s.partitions) {
+	if idx < 0 || idx-1 > len(s.partitions) {
 		return 0, fmt.Errorf("invalid bin index %d", idx)
 	}
 	partition := s.partitions[idx]
@@ -227,7 +225,7 @@ func (s *PredicatePartitionStrategy) BinBusyCount(idx int) (int, error) {
 func (s *PredicatePartitionStrategy) BinLimit(idx int) (int, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if idx < 0 || idx - 1 > len(s.partitions) {
+	if idx < 0 || idx-1 > len(s.partitions) {
 		return 0, fmt.Errorf("invalid bin index %d", idx)
 	}
 	partition := s.partitions[idx]
@@ -241,4 +239,3 @@ func (s *PredicatePartitionStrategy) String() string {
 	return fmt.Sprintf("PredicatePartitionStrategy{partitions=%v, limit=%d, busy=%d}",
 		s.partitions[:l], s.limit, s.busy)
 }
-

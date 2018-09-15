@@ -11,7 +11,7 @@ import (
 // AIMDLimit implements a Loss based dynamic Limit that does an additive increment as long as there are no errors and a
 // multiplicative decrement when there is an error.
 type AIMDLimit struct {
-	limit int
+	limit        int
 	backOffRatio float64
 
 	mu sync.RWMutex
@@ -26,7 +26,7 @@ func NewAIMDLimit(
 	backOffRatio float64,
 ) *AIMDLimit {
 	return &AIMDLimit{
-		limit: initialLimit,
+		limit:        initialLimit,
 		backOffRatio: backOffRatio,
 	}
 }
@@ -41,7 +41,7 @@ func (l *AIMDLimit) Update(sample core.SampleWindow) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if sample.DidDrop() {
-		l.limit = int(math.Max(1, math.Min(float64(l.limit - 1), float64(int(float64(l.limit) * l.backOffRatio)))))
+		l.limit = int(math.Max(1, math.Min(float64(l.limit-1), float64(int(float64(l.limit)*l.backOffRatio)))))
 	} else if sample.MaxInFlight() >= l.limit {
 		l.limit++
 	}
@@ -57,6 +57,3 @@ func (l *AIMDLimit) BackOffRatio() float64 {
 func (l AIMDLimit) String() string {
 	return fmt.Sprintf("AIMDLimit{limit=%d, backOffRatio=%0.4f}", l.EstimatedLimit(), l.BackOffRatio())
 }
-
-
-

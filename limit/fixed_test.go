@@ -13,10 +13,10 @@ func TestFixedLimit(t *testing.T) {
 	l := NewFixedLimit(10)
 	asrt.Equal(10, l.EstimatedLimit())
 
-	l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*10).Nanoseconds(), 10))
+	l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
 	asrt.Equal(10, l.EstimatedLimit())
 
-	l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*10).Nanoseconds(), 100))
+	l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 100))
 	asrt.Equal(10, l.EstimatedLimit())
 
 	l.Update(measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(100))

@@ -11,8 +11,8 @@ import (
 // SimpleStrategy is the simplest strategy for enforcing a concurrency limit that has a single counter for tracking
 // total usage.
 type SimpleStrategy struct {
-	inFlight *int32
-	limit *int32
+	inFlight       *int32
+	limit          *int32
 	metricListener core.MetricSampleListener
 }
 
@@ -28,8 +28,8 @@ func NewSimpleStrategyWithMetricRegistry(limit int, registry core.MetricRegistry
 	inFlight := int32(0)
 	listener := registry.RegisterDistribution(core.METRIC_INFLIGHT, tags...)
 	strategy := &SimpleStrategy{
-		limit: &currentLimit,
-		inFlight: &inFlight,
+		limit:          &currentLimit,
+		inFlight:       &inFlight,
 		metricListener: listener,
 	}
 

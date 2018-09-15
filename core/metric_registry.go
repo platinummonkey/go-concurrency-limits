@@ -1,6 +1,5 @@
 package core
 
-
 // MetricSampleListener is a listener to receive samples for a distribution
 type MetricSampleListener interface {
 	//
@@ -8,7 +7,7 @@ type MetricSampleListener interface {
 }
 
 // EmptydMetricSampleListener implements a sample listener that ignores everything.
-type EmptyMetricSampleListener struct {}
+type EmptyMetricSampleListener struct{}
 
 func (*EmptyMetricSampleListener) AddSample(value float64) {
 	// noop
@@ -42,12 +41,10 @@ type MetricRegistry interface {
 	// RegisterGauge will register a gauge using the provided supplier.  The supplier will be polled whenever the gauge
 	// value is flushed by the registry.
 	RegisterGauge(ID string, supplier MetricSupplier, tagNameValuePairs ...string)
-
 }
 
-
 // EmptyMetricRegistry implements a void reporting metric registry
-type EmptyMetricRegistry struct {}
+type EmptyMetricRegistry struct{}
 
 // EmptyMetricRegistryInstance is a singleton empty metric registry instance.
 var EmptyMetricRegistryInstance = &EmptyMetricRegistry{}
@@ -59,5 +56,3 @@ func (*EmptyMetricRegistry) RegisterDistribution(ID string, tagNameValuePairs ..
 func (*EmptyMetricRegistry) RegisterGauge(ID string, supplier MetricSupplier, tagNameValuePairs ...string) {
 	// noop
 }
-
-

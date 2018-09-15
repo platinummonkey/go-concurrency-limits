@@ -14,9 +14,9 @@ type StrategyToken interface {
 }
 
 type StaticStrategyToken struct {
-	acquired bool
+	acquired      bool
 	inFlightCount int
-	releaseFunc func()
+	releaseFunc   func()
 }
 
 func (t *StaticStrategyToken) IsAcquired() bool {
@@ -35,17 +35,17 @@ func (t *StaticStrategyToken) Release() {
 
 func NewNotAcquiredStrategyToken(inFlightCount int) StrategyToken {
 	return &StaticStrategyToken{
-		acquired: false,
+		acquired:      false,
 		inFlightCount: inFlightCount,
-		releaseFunc: func() {},
+		releaseFunc:   func() {},
 	}
 }
 
 func NewAcquiredStrategyToken(inFlightCount int, releaseFunc func()) StrategyToken {
 	return &StaticStrategyToken{
-		acquired: true,
+		acquired:      true,
 		inFlightCount: inFlightCount,
-		releaseFunc: releaseFunc,
+		releaseFunc:   releaseFunc,
 	}
 }
 

@@ -16,11 +16,11 @@ const PARTITION_TAG_NAME = "partition"
 // LookupPartition defines a partition for the LookupPartitionStrategy
 // Note: generally speaking you shouldn't use this directly, instead use the higher level LookupPartitionStrategy
 type LookupPartition struct {
-	name string
-	percent float64
+	name                 string
+	percent              float64
 	MetricSampleListener core.MetricSampleListener
-	limit *int32
-	busy *int32
+	limit                *int32
+	busy                 *int32
 }
 
 func NewLookupPartitionWithMetricRegistry(name string, percent float64, limit int32, registry core.MetricRegistry) LookupPartition {
@@ -30,10 +30,10 @@ func NewLookupPartitionWithMetricRegistry(name string, percent float64, limit in
 	}
 	busy := int32(0)
 	p := LookupPartition{
-		name: name,
+		name:    name,
 		percent: percent,
-		limit: &pLimit,
-		busy: &busy,
+		limit:   &pLimit,
+		busy:    &busy,
 	}
 	sampleListener := registry.RegisterDistribution(core.METRIC_INFLIGHT, PARTITION_TAG_NAME, name)
 	registry.RegisterGauge(core.METRIC_PARTITION_LIMIT, core.NewIntMetricSupplierWrapper(p.Limit), PARTITION_TAG_NAME, name)
@@ -56,7 +56,7 @@ func (p *LookupPartition) Limit() int {
 // is at least 1.  With this technique the sum of bin limits may end up being
 // higher than the concurrency limit.
 func (p *LookupPartition) UpdateLimit(totalLimit int32) {
-	limit := int32(math.Max(1, math.Ceil(float64(totalLimit) * p.percent)))
+	limit := int32(math.Max(1, math.Ceil(float64(totalLimit)*p.percent)))
 	atomic.StoreInt32(p.limit, limit)
 }
 
@@ -97,12 +97,12 @@ func (p *LookupPartition) String() string {
 // LookupPartitionStrategy defines the strategy for partitioning the limiter by named groups where the allocation of
 // group to percentage is provided up front.
 type LookupPartitionStrategy struct {
-	partitions map[string]*LookupPartition
+	partitions       map[string]*LookupPartition
 	unknownPartition LookupPartition
-	lookupFunc func(ctx context.Context) string
+	lookupFunc       func(ctx context.Context) string
 
-	mu sync.RWMutex
-	busy int32
+	mu    sync.RWMutex
+	busy  int32
 	limit int32
 }
 
@@ -127,11 +127,11 @@ func NewLookupPartitionStrategyWithMetricRegistry(
 
 	unknownPartition := NewLookupPartitionWithMetricRegistry("unknown", 0.0, limit, registry)
 	strategy := &LookupPartitionStrategy{
-		partitions: partitions,
+		partitions:       partitions,
 		unknownPartition: unknownPartition,
-		lookupFunc: lookupFunc,
-		busy: 0,
-		limit: limit,
+		lookupFunc:       lookupFunc,
+		busy:             0,
+		limit:            limit,
 	}
 
 	registry.RegisterGauge(core.METRIC_LIMIT, core.NewIntMetricSupplierWrapper(strategy.Limit))
@@ -223,4 +223,3 @@ func (s *LookupPartitionStrategy) String() string {
 	return fmt.Sprintf("LookupPartitionStrategy{partitions=%v, unknownPartition=%v, limit=%d, busy=%d}",
 		s.partitions, s.unknownPartition, s.limit, s.busy)
 }
-

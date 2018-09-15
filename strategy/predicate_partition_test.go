@@ -69,7 +69,7 @@ func TestPredicatePartition(t *testing.T) {
 			asrt.True(token.IsAcquired())
 			busyCount, err := strategy.BinBusyCount(0)
 			asrt.NoError(err)
-			asrt.Equal(i + 1, busyCount)
+			asrt.Equal(i+1, busyCount)
 		}
 
 		// should be exceeded
@@ -100,7 +100,7 @@ func TestPredicatePartition(t *testing.T) {
 			asrt.True(token.IsAcquired())
 			busyCount, err := strategy.BinBusyCount(0)
 			asrt.NoError(err)
-			asrt.Equal(i + 1, busyCount)
+			asrt.Equal(i+1, busyCount)
 		}
 
 		// should be exceeded
@@ -136,8 +136,8 @@ func TestPredicatePartition(t *testing.T) {
 			asrt.True(token.IsAcquired())
 			busyCount, err := strategy.BinBusyCount(0)
 			asrt.NoError(err)
-			asrt.Equal(i + 1, busyCount)
-			asrt.Equal(i + 1, strategy.BusyCount())
+			asrt.Equal(i+1, busyCount)
+			asrt.Equal(i+1, strategy.BusyCount())
 		}
 
 		for i := 0; i < 7; i++ {
@@ -146,8 +146,8 @@ func TestPredicatePartition(t *testing.T) {
 			asrt.True(token.IsAcquired())
 			busyCount, err := strategy.BinBusyCount(1)
 			asrt.NoError(err)
-			asrt.Equal(i + 1, busyCount)
-			asrt.Equal(i + 4, strategy.BusyCount())
+			asrt.Equal(i+1, busyCount)
+			asrt.Equal(i+4, strategy.BusyCount())
 		}
 
 		// should be exceeded
@@ -188,7 +188,7 @@ func TestPredicatePartition(t *testing.T) {
 			asrt.True(token2.IsAcquired())
 			busyCount, err := strategy.BinBusyCount(0)
 			asrt.NoError(err)
-			asrt.Equal(i + 1, busyCount)
+			asrt.Equal(i+1, busyCount)
 		}
 
 		// should be exceeded

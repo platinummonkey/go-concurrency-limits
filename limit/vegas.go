@@ -6,8 +6,8 @@ import (
 	"math/rand"
 	"sync"
 
-	"github.com/platinummonkey/go-concurrency-limits/limit/functions"
 	"github.com/platinummonkey/go-concurrency-limits/core"
+	"github.com/platinummonkey/go-concurrency-limits/limit/functions"
 )
 
 // VegasLimit implements a Limiter based on TCP Vegas where the limit increases by alpha if the queue_use is
@@ -19,22 +19,22 @@ import (
 // For traditional TCP Vegas alpha is typically 2-3 and beta is typically 4-6.  To allow for better growth and stability
 // at higher limits we set alpha=Max(3, 10% of the current limit) and beta=Max(6, 20% of the current limit).
 type VegasLimit struct {
-	estimatedLimit float64
-	maxLimit int
-	rttNoLoad int64
-	smoothing float64
-	alphaFunc func(estimatedLimit int) int
-	betaFunc func(estimatedLimit int) int
-	thresholdFunc func(estimatedLimit int) int
-	increaseFunc func(estimatedLimit float64) float64
-	decreaseFunc func(estimatedLimit float64) float64
+	estimatedLimit    float64
+	maxLimit          int
+	rttNoLoad         int64
+	smoothing         float64
+	alphaFunc         func(estimatedLimit int) int
+	betaFunc          func(estimatedLimit int) int
+	thresholdFunc     func(estimatedLimit int) int
+	increaseFunc      func(estimatedLimit float64) float64
+	decreaseFunc      func(estimatedLimit float64) float64
 	rttSampleListener core.MetricSampleListener
-	probeMultipler int
-	probeCountdown int
+	probeMultipler    int
+	probeCountdown    int
 
 	registry core.MetricRegistry
-	logger Logger
-	mu sync.RWMutex
+	logger   Logger
+	mu       sync.RWMutex
 }
 
 func NewDefaultVegasLimit(logger Logger, registry core.MetricRegistry) *VegasLimit {
@@ -129,19 +129,19 @@ func NewVegasLimitWithRegistry(
 	}
 
 	return &VegasLimit{
-		estimatedLimit: float64(initialLimit),
-		maxLimit: maxConcurrency,
-		alphaFunc: alphaFunc,
-		betaFunc: betaFunc,
-		thresholdFunc: thresholdFunc,
-		increaseFunc: increaseFunc,
-		decreaseFunc: decreaseFunc,
-		smoothing: smoothing,
-		probeMultipler: probeMultiplier,
-		probeCountdown: nextVegasProbeCountdown(probeMultiplier, float64(initialLimit)),
+		estimatedLimit:    float64(initialLimit),
+		maxLimit:          maxConcurrency,
+		alphaFunc:         alphaFunc,
+		betaFunc:          betaFunc,
+		thresholdFunc:     thresholdFunc,
+		increaseFunc:      increaseFunc,
+		decreaseFunc:      decreaseFunc,
+		smoothing:         smoothing,
+		probeMultipler:    probeMultiplier,
+		probeCountdown:    nextVegasProbeCountdown(probeMultiplier, float64(initialLimit)),
 		rttSampleListener: registry.RegisterDistribution(core.METRIC_MIN_RTT),
-		registry: registry,
-		logger: logger,
+		registry:          registry,
+		logger:            logger,
 	}
 
 }
@@ -150,7 +150,7 @@ func NewVegasLimitWithRegistry(
 const LimitProbeDisabled = -1
 
 func nextVegasProbeCountdown(probeMultiplier int, estimatedLimit float64) int {
-	maxRange := int(float64(probeMultiplier) * estimatedLimit) / 2
+	maxRange := int(float64(probeMultiplier)*estimatedLimit) / 2
 	return rand.Intn(maxRange) + maxRange // return roughly [maxVal / 2, maxVal]
 }
 
@@ -171,7 +171,7 @@ func (l *VegasLimit) Update(sample core.SampleWindow) {
 	if l.probeCountdown != LimitProbeDisabled {
 		l.probeCountdown--
 		if l.probeCountdown <= 0 {
-			l.logger.Debugf("probe MinRTT %d", rtt / 1e6)
+			l.logger.Debugf("probe MinRTT %d", rtt/1e6)
 			l.probeCountdown = nextVegasProbeCountdown(l.probeMultipler, l.estimatedLimit)
 			l.rttNoLoad = rtt
 			return
@@ -179,7 +179,7 @@ func (l *VegasLimit) Update(sample core.SampleWindow) {
 	}
 
 	if l.rttNoLoad == 0 || rtt < l.rttNoLoad {
-		l.logger.Debugf("New MinRTT %d", rtt / 1e6)
+		l.logger.Debugf("New MinRTT %d", rtt/1e6)
 		l.rttNoLoad = rtt
 		return
 	}
@@ -189,13 +189,13 @@ func (l *VegasLimit) Update(sample core.SampleWindow) {
 }
 
 func (l *VegasLimit) updateEstimatedLimit(sample core.SampleWindow, rtt int64) {
-	queueSize := int(math.Ceil(l.estimatedLimit * (1 - float64(l.rttNoLoad) / float64(rtt))))
+	queueSize := int(math.Ceil(l.estimatedLimit * (1 - float64(l.rttNoLoad)/float64(rtt))))
 
 	var newLimit float64
 	// Treat any drop (i.e timeout) as needing to reduce the limit
 	if sample.DidDrop() {
 		newLimit = l.decreaseFunc(l.estimatedLimit)
-	} else if float64(sample.MaxInFlight()) * 2 < l.estimatedLimit {
+	} else if float64(sample.MaxInFlight())*2 < l.estimatedLimit {
 		// Prevent upward drift if not close to the limit
 		return
 	} else {
@@ -219,11 +219,11 @@ func (l *VegasLimit) updateEstimatedLimit(sample core.SampleWindow, rtt int64) {
 	}
 
 	newLimit = math.Max(1, math.Min(float64(l.maxLimit), newLimit))
-	newLimit = (1 - l.smoothing) * l.estimatedLimit + l.smoothing * newLimit
+	newLimit = (1-l.smoothing)*l.estimatedLimit + l.smoothing*newLimit
 
 	if int(newLimit) != int(l.estimatedLimit) && l.logger.IsDebugEnabled() {
 		l.logger.Debugf("New limit=%d, minRTT=%d ms, winRTT=%d ms, queueSize=%d",
-			int(newLimit), l.rttNoLoad / 1e6, rtt / 1e6, queueSize)
+			int(newLimit), l.rttNoLoad/1e6, rtt/1e6, queueSize)
 	}
 
 	l.estimatedLimit = newLimit

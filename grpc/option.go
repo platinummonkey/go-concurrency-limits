@@ -54,7 +54,7 @@ func defaultServerResponseClassifier(
 }
 
 type interceptorConfig struct {
-	limiter core.Limiter
+	limiter                 core.Limiter
 	serverResponseClassifer ServerResponseClassifier
 	clientResponseClassifer ClientResponseClassifier
 }

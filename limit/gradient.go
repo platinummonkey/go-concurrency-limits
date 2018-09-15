@@ -16,20 +16,20 @@ import (
 // Why square root?  Because it's better than a fixed queue size that becomes too small for large limits but still
 // prevents the limit from growing too much by slowing down growth as the limit grows.
 type GradientLimit struct {
-	estimatedLimit float64 // Estimated concurrency limit based on our algorithm
-	maxLimit int // Maximum allowed limit providing an upper bound failsafe
-	minLimit int
-	queueSizeFunc func(estimatedLimit int) int
-	smoothing float64
-	rttTolerance float64
-	minRTTSampleListener core.MetricSampleListener
+	estimatedLimit             float64 // Estimated concurrency limit based on our algorithm
+	maxLimit                   int     // Maximum allowed limit providing an upper bound failsafe
+	minLimit                   int
+	queueSizeFunc              func(estimatedLimit int) int
+	smoothing                  float64
+	rttTolerance               float64
+	minRTTSampleListener       core.MetricSampleListener
 	minWindowRTTSampleListener core.MetricSampleListener
-	queueSizeSampleListener core.MetricSampleListener
-	probeInterval int
-	resetRTTCounter int
-	rttNoLoadMeasurement core.MeasurementInterface
-	logger Logger
-	registry core.MetricRegistry
+	queueSizeSampleListener    core.MetricSampleListener
+	probeInterval              int
+	resetRTTCounter            int
+	rttNoLoadMeasurement       core.MeasurementInterface
+	logger                     Logger
+	registry                   core.MetricRegistry
 
 	mu sync.RWMutex
 }
@@ -45,7 +45,7 @@ func nextProbeCountdown(probeInterval int) int {
 func NewGradientLimitWithRegistry(
 	initialLimit int, // Initial limit used by the limiter
 	minLimit int, // Minimum concurrency limit allowed.  The minimum helps prevent the algorithm from adjust the limit too far down.  Note that this limit is not desirable when use as backpressure for batch apps.
-	maxConcurrency int,  // Maximum allowable concurrency.  Any estimated concurrency will be capped.
+	maxConcurrency int, // Maximum allowable concurrency.  Any estimated concurrency will be capped.
 	smoothing float64, // Smoothing factor to limit how aggressively the estimated limit can shrink when queuing has been detected. A smoothing value of 0.0 to 1.0 where 1.0 means the limit is completely replicated by the new estimate.
 	queueSizeFunc func(estimatedLimit int) int, // Function to dynamically determine the amount the estimated limit can grow while latencies remain low as a function of the current limit.
 	rttTolerance float64, // Tolerance for changes in minimum latency.  Indicating how much change in minimum latency is acceptable before reducing the limit.  For example, a value of 2.0 means that a 2x increase in latency is acceptable.
@@ -79,21 +79,21 @@ func NewGradientLimitWithRegistry(
 	}
 
 	return &GradientLimit{
-		estimatedLimit: float64(initialLimit),
-		maxLimit: maxConcurrency,
-		minLimit: minLimit,
-		queueSizeFunc: queueSizeFunc,
-		smoothing: smoothing,
-		rttTolerance: rttTolerance,
-		probeInterval: probeInterval,
-		resetRTTCounter: nextProbeCountdown(probeInterval),
+		estimatedLimit:       float64(initialLimit),
+		maxLimit:             maxConcurrency,
+		minLimit:             minLimit,
+		queueSizeFunc:        queueSizeFunc,
+		smoothing:            smoothing,
+		rttTolerance:         rttTolerance,
+		probeInterval:        probeInterval,
+		resetRTTCounter:      nextProbeCountdown(probeInterval),
 		rttNoLoadMeasurement: &measurements.MinimumMeasurement{},
-		logger: logger,
-		registry: registry,
+		logger:               logger,
+		registry:             registry,
 
-		minRTTSampleListener: registry.RegisterDistribution(core.METRIC_MIN_RTT),
+		minRTTSampleListener:       registry.RegisterDistribution(core.METRIC_MIN_RTT),
 		minWindowRTTSampleListener: registry.RegisterDistribution(core.METRIC_WINDOW_MIN_RTT),
-		queueSizeSampleListener: registry.RegisterDistribution(core.METRIC_WINDOW_QUEUE_SIZE),
+		queueSizeSampleListener:    registry.RegisterDistribution(core.METRIC_WINDOW_QUEUE_SIZE),
 	}
 }
 
@@ -147,13 +147,13 @@ func (l *GradientLimit) Update(sample core.SampleWindow) {
 	// so set to 1.0 to indicate no queuing.  Otherwise calculate the slope and don't
 	// allow it to be reduced by more than half to avoid aggressive load-sheding due to
 	// outliers.
-	gradient := math.Max(0.5, math.Min(1.0, l.rttTolerance * float64(rttNoLoad) / float64(rtt)))
+	gradient := math.Max(0.5, math.Min(1.0, l.rttTolerance*float64(rttNoLoad)/float64(rtt)))
 
 	var newLimit float64
 	// Reduce the limit aggressively if there was a drop
 	if sample.DidDrop() {
-		newLimit = l.estimatedLimit/2
-	} else if float64(sample.MaxInFlight()) < l.estimatedLimit / 2 {
+		newLimit = l.estimatedLimit / 2
+	} else if float64(sample.MaxInFlight()) < l.estimatedLimit/2 {
 		// Don't grow the limit if we are app limited
 		return
 	} else {
@@ -163,13 +163,13 @@ func (l *GradientLimit) Update(sample core.SampleWindow) {
 
 	if newLimit < l.estimatedLimit {
 		// apply downward smoothing with a minLimit minimum.
-		newLimit = math.Max(float64(l.minLimit), l.estimatedLimit * (1-l.smoothing) + l.smoothing*newLimit)
+		newLimit = math.Max(float64(l.minLimit), l.estimatedLimit*(1-l.smoothing)+l.smoothing*newLimit)
 	}
 	newLimit = math.Max(float64(queueSize), math.Min(float64(l.maxLimit), newLimit))
 
 	if int(newLimit) != int(l.estimatedLimit) && l.logger.IsDebugEnabled() {
 		l.logger.Debugf("new limit=%d, minRtt=%d ms, winRtt=%d ms, queueSize=%d, gradient=%0.4f, resetCounter=%d",
-			int(newLimit), rttNoLoad / 1e6, rtt / 1e6, queueSize, gradient, l.resetRTTCounter)
+			int(newLimit), rttNoLoad/1e6, rtt/1e6, queueSize, gradient, l.resetRTTCounter)
 	}
 
 	l.estimatedLimit = newLimit
@@ -177,6 +177,5 @@ func (l *GradientLimit) Update(sample core.SampleWindow) {
 
 func (l GradientLimit) String() string {
 	return fmt.Sprintf("GradientLimit{limit=%d, rttNoLoad=%d ms}",
-		l.EstimatedLimit(), l.RTTNoLoad() / 1e6)
+		l.EstimatedLimit(), l.RTTNoLoad()/1e6)
 }
-

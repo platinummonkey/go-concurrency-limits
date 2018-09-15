@@ -35,27 +35,27 @@ func TestVegasLimit(t *testing.T) {
 	t.Run("IncreaseLimit", func(t2 *testing.T) {
 		asrt := assert.New(t2)
 		l := createVegasLimit()
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*10).Nanoseconds(), 10))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
 		asrt.Equal(10, l.EstimatedLimit())
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*10).Nanoseconds(), 11))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 11))
 		asrt.Equal(16, l.EstimatedLimit())
 	})
 
 	t.Run("DecreaseLimit", func(t2 *testing.T) {
 		asrt := assert.New(t2)
 		l := createVegasLimit()
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*10).Nanoseconds(), 10))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
 		asrt.Equal(10, l.EstimatedLimit())
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*50).Nanoseconds(), 11))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 50).Nanoseconds(), 11))
 		asrt.Equal(9, l.EstimatedLimit())
 	})
 
 	t.Run("NoChangeIfWithinThresholds", func(t2 *testing.T) {
 		asrt := assert.New(t2)
 		l := createVegasLimit()
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*10).Nanoseconds(), 10))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
 		asrt.Equal(10, l.EstimatedLimit())
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*14).Nanoseconds(), 14))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 14).Nanoseconds(), 14))
 		asrt.Equal(10, l.EstimatedLimit())
 	})
 
@@ -66,7 +66,7 @@ func TestVegasLimit(t *testing.T) {
 			200,
 			0.5,
 			nil,
-			 nil,
+			nil,
 			nil,
 			nil,
 			func(estimatedLimit float64) float64 {
@@ -77,15 +77,15 @@ func TestVegasLimit(t *testing.T) {
 			core.EmptyMetricRegistryInstance)
 
 		// Pick up first min-rtt
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*10).Nanoseconds(), 100))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 100))
 		asrt.Equal(100, l.EstimatedLimit())
 
 		// First decrease
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*20).Nanoseconds(), 100))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 20).Nanoseconds(), 100))
 		asrt.Equal(75, l.EstimatedLimit())
 
 		// Second decrease
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*20).Nanoseconds(), 100))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 20).Nanoseconds(), 100))
 		asrt.Equal(56, l.EstimatedLimit())
 	})
 
@@ -107,15 +107,15 @@ func TestVegasLimit(t *testing.T) {
 			core.EmptyMetricRegistryInstance)
 
 		// Pick up first min-rtt
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*10).Nanoseconds(), 100))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 100))
 		asrt.Equal(100, l.EstimatedLimit())
 
 		// First decrease
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*20).Nanoseconds(), 100))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 20).Nanoseconds(), 100))
 		asrt.Equal(50, l.EstimatedLimit())
 
 		// Second decrease
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond*20).Nanoseconds(), 100))
+		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 20).Nanoseconds(), 100))
 		asrt.Equal(25, l.EstimatedLimit())
 	})
 }

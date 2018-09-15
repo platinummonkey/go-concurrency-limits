@@ -7,7 +7,7 @@ import (
 // MinimumMeasurement implements a minimum value measurement
 type MinimumMeasurement struct {
 	value float64
-	mu sync.RWMutex
+	mu    sync.RWMutex
 }
 
 func (m *MinimumMeasurement) Add(sample float64) (float64, bool) {
@@ -31,6 +31,3 @@ func (m *MinimumMeasurement) Reset() {
 	defer m.mu.Unlock()
 	m.value = 0.0
 }
-
-
-

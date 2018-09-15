@@ -9,10 +9,10 @@ import (
 )
 
 type lifoElement struct {
-	id uint64
-	ctx context.Context
+	id          uint64
+	ctx         context.Context
 	releaseChan chan core.Listener
-	next, prev *lifoElement
+	next, prev  *lifoElement
 }
 
 func (e *lifoElement) setListener(listener core.Listener) {
@@ -25,9 +25,9 @@ func (e *lifoElement) setListener(listener core.Listener) {
 }
 
 type lifoQueue struct {
-	top *lifoElement
+	top  *lifoElement
 	size uint64
-	mu sync.RWMutex
+	mu   sync.RWMutex
 }
 
 func (q *lifoQueue) len() uint64 {
@@ -55,7 +55,7 @@ func (q *lifoQueue) push(ctx context.Context) (uint64, chan core.Listener) {
 	return 1, releaseChan
 }
 
-func (q *lifoQueue) pop() (*lifoElement) {
+func (q *lifoQueue) pop() *lifoElement {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	if q.size > 0 {
@@ -109,11 +109,10 @@ func (q *lifoQueue) remove(id uint64) {
 	}
 }
 
-
 // LifoBlockingListener implements a blocking listener for the LifoBlockingListener
 type LifoBlockingListener struct {
 	delegateListener core.Listener
-	limiter *LifoBlockingLimiter
+	limiter          *LifoBlockingLimiter
 }
 
 func (l *LifoBlockingListener) unblock() {
@@ -152,13 +151,13 @@ func (l *LifoBlockingListener) OnSuccess() {
 //
 // Use this limiter only when the concurrency model allows the limiter to be blocked.
 type LifoBlockingLimiter struct {
-	delegate core.Limiter
-	maxBacklogSize uint64
+	delegate          core.Limiter
+	maxBacklogSize    uint64
 	maxBacklogTimeout time.Duration
 
 	backlog lifoQueue
-	c *sync.Cond
-	mu sync.RWMutex
+	c       *sync.Cond
+	mu      sync.RWMutex
 }
 
 func NewLifoBlockingLimiter(
@@ -174,11 +173,11 @@ func NewLifoBlockingLimiter(
 	}
 	mu := sync.Mutex{}
 	return &LifoBlockingLimiter{
-		delegate: delegate,
-		maxBacklogSize: uint64(maxBacklogSize),
+		delegate:          delegate,
+		maxBacklogSize:    uint64(maxBacklogSize),
 		maxBacklogTimeout: maxBacklogTimeout,
-		backlog: lifoQueue{},
-		c: sync.NewCond(&mu),
+		backlog:           lifoQueue{},
+		c:                 sync.NewCond(&mu),
 	}
 }
 
@@ -206,7 +205,7 @@ func (l *LifoBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 	select {
 	case listener = <-eventReleaseChan:
 		return listener
-	case <- time.After(l.maxBacklogTimeout):
+	case <-time.After(l.maxBacklogTimeout):
 		// Remove the holder from the backlog.  This item is likely to be at the end of the
 		// list so do a remove to minimize the number of items to traverse
 		l.backlog.remove(eventID)

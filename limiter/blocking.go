@@ -7,11 +7,10 @@ import (
 	"sync"
 )
 
-
 // BlockingListener wraps the wrapped Limiter's Listener to correctly handle releasing blocked connections
 type BlockingListener struct {
 	delegateListener core.Listener
-	c *sync.Cond
+	c                *sync.Cond
 }
 
 func (l *BlockingListener) unblock() {
@@ -38,7 +37,7 @@ func (l *BlockingListener) OnSuccess() {
 // as a back-pressure mechanism.
 type BlockingLimiter struct {
 	delegate core.Limiter
-	c *sync.Cond
+	c        *sync.Cond
 }
 
 func NewBlockingLimiter(
@@ -47,7 +46,7 @@ func NewBlockingLimiter(
 	mu := sync.Mutex{}
 	return &BlockingLimiter{
 		delegate: delegate,
-		c: sync.NewCond(&mu),
+		c:        sync.NewCond(&mu),
 	}
 }
 
@@ -74,7 +73,7 @@ func (l *BlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	}
 	return &BlockingListener{
 		delegateListener: delegateListener,
-		c: l.c,
+		c:                l.c,
 	}, true
 }
 
