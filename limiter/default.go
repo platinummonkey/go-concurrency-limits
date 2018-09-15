@@ -31,6 +31,8 @@ type DefaultListener struct {
 	nextUpdateTime     int64
 }
 
+// OnSuccess is called as a notification that the operation succeeded and internally measured latency should be
+// used as an RTT sample.
 func (l *DefaultListener) OnSuccess() {
 	atomic.AddInt64(l.inFlight, -1)
 	l.token.Release()
@@ -68,11 +70,16 @@ func (l *DefaultListener) OnSuccess() {
 
 }
 
+// OnIgnore is called to indicate the operation failed before any meaningful RTT measurement could be made and
+// should be ignored to not introduce an artificially low RTT.
 func (l *DefaultListener) OnIgnore() {
 	atomic.AddInt64(l.inFlight, -1)
 	l.token.Release()
 }
 
+// OnDropped is called to indicate the request failed and was dropped due to being rejected by an external limit or
+// hitting a timeout.  Loss based Limit implementations will likely do an aggressive reducing in limit when this
+// happens.
 func (l *DefaultListener) OnDropped() {
 	atomic.AddInt64(l.inFlight, -1)
 	l.token.Release()
@@ -163,6 +170,11 @@ func NewDefaultLimiter(
 	}, nil
 }
 
+// Acquire a token from the limiter.  Returns an Optional.empty() if the limit has been exceeded.
+// If acquired the caller must call one of the Listener methods when the operation has been completed to release
+// the count.
+//
+// context Context for the request. The context is used by advanced strategies such as LookupPartitionStrategy.
 func (l *DefaultLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -202,6 +214,7 @@ func (l *DefaultLimiter) isWindowReady(sample measurements.ImmutableSampleWindow
 	return sample.CandidateRTTNanoseconds() < math.MaxInt64 && sample.SampleCount() > l.windowSize
 }
 
+// EstimatedLimit will return the current estimated limit.
 func (l *DefaultLimiter) EstimatedLimit() int {
 	l.mu.RLock()
 	defer l.mu.RUnlock()

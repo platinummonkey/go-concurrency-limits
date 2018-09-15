@@ -16,10 +16,12 @@ type SimpleStrategy struct {
 	metricListener core.MetricSampleListener
 }
 
+// NewSimpleStrategy will create a new SimpleStrategy
 func NewSimpleStrategy(limit int) *SimpleStrategy {
 	return NewSimpleStrategyWithMetricRegistry(limit, core.EmptyMetricRegistryInstance)
 }
 
+// NewSimpleStrategyWithMetricRegistry will create a new SimpleStrategy
 func NewSimpleStrategyWithMetricRegistry(limit int, registry core.MetricRegistry, tags ...string) *SimpleStrategy {
 	if limit < 1 {
 		limit = 1
@@ -37,6 +39,9 @@ func NewSimpleStrategyWithMetricRegistry(limit int, registry core.MetricRegistry
 	return strategy
 }
 
+// TryAcquire will try to acquire a token from the limiter.
+// context Context of the request for partitioned limits.
+// returns not ok if limit is exceeded, or a StrategyToken that must be released when the operation completes.
 func (s *SimpleStrategy) TryAcquire(ctx context.Context) (token core.StrategyToken, ok bool) {
 	inFlight := atomic.LoadInt32(s.inFlight)
 	if inFlight >= atomic.LoadInt32(s.limit) {
@@ -53,6 +58,7 @@ func (s *SimpleStrategy) TryAcquire(ctx context.Context) (token core.StrategyTok
 	return core.NewAcquiredStrategyToken(int(inFlight), f(s.inFlight)), true
 }
 
+// SetLimit will update the strategy with a new limit.
 func (s *SimpleStrategy) SetLimit(limit int) {
 	if limit < 1 {
 		limit = 1

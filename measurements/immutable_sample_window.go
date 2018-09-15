@@ -14,10 +14,12 @@ type ImmutableSampleWindow struct {
 	didDrop     bool
 }
 
+// NewDefaultImmutableSampleWindow will create a new ImmutableSampleWindow with defaults
 func NewDefaultImmutableSampleWindow() *ImmutableSampleWindow {
 	return NewImmutableSampleWindow(math.MaxInt64, 0, 0, 0, false)
 }
 
+// NewImmutableSampleWindow will create a new ImmutableSampleWindow with defaults
 func NewImmutableSampleWindow(
 	minRTT int64,
 	sum int64,
@@ -57,10 +59,12 @@ func (s *ImmutableSampleWindow) AddDroppedSample(maxInFlight int) *ImmutableSamp
 	return NewImmutableSampleWindow(s.minRTT, s.sum, maxInFlight, s.sampleCount, true)
 }
 
+// CandidateRTTNanoseconds returns the candidate RTT in the sample window. This is traditionally the minimum rtt.
 func (s *ImmutableSampleWindow) CandidateRTTNanoseconds() int64 {
 	return s.minRTT
 }
 
+// AverageRTTNanoseconds returns the average RTT in the sample window.  Excludes timeouts and dropped rtt.
 func (s *ImmutableSampleWindow) AverageRTTNanoseconds() int64 {
 	if s.sampleCount == 0 {
 		return 0
@@ -68,14 +72,17 @@ func (s *ImmutableSampleWindow) AverageRTTNanoseconds() int64 {
 	return s.sum / int64(s.sampleCount)
 }
 
+// MaxInFlight returns the maximum number of in-flight observed during the sample window.
 func (s *ImmutableSampleWindow) MaxInFlight() int {
 	return s.maxInFlight
 }
 
+// SampleCount is the number of observed RTTs in the sample window.
 func (s *ImmutableSampleWindow) SampleCount() int {
 	return s.sampleCount
 }
 
+// DidDrop returns True if there was a timeout.
 func (s *ImmutableSampleWindow) DidDrop() bool {
 	return s.didDrop
 }

@@ -21,6 +21,7 @@ type PredicatePartition struct {
 	mu sync.RWMutex
 }
 
+// NewPredicatePartitionWithMetricRegistry will create a new PredicatePartition
 func NewPredicatePartitionWithMetricRegistry(
 	name string,
 	percent float64,
@@ -34,8 +35,8 @@ func NewPredicatePartitionWithMetricRegistry(
 		limit:     1,
 		busy:      0,
 	}
-	sampleListener := registry.RegisterDistribution(core.MetricInFlight, PARTITION_TAG_NAME, name)
-	registry.RegisterGauge(core.MetricPartitionLimit, core.NewIntMetricSupplierWrapper(p.Limit), PARTITION_TAG_NAME, name)
+	sampleListener := registry.RegisterDistribution(core.MetricInFlight, PartitionTagName, name)
+	registry.RegisterGauge(core.MetricPartitionLimit, core.NewIntMetricSupplierWrapper(p.Limit), PartitionTagName, name)
 	p.MetricSampleListener = sampleListener
 	return &p
 }
@@ -123,7 +124,7 @@ type PredicatePartitionStrategy struct {
 	limit int32
 }
 
-// NewPredicatePartitionStrategy will create a new PredicatePartitionStrategy
+// NewPredicatePartitionStrategyWithMetricRegistry will create a new PredicatePartitionStrategy
 func NewPredicatePartitionStrategyWithMetricRegistry(
 	partitions []*PredicatePartition,
 	limit int32,

@@ -10,8 +10,8 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
-// PARTITION_TAG_NAME represents the metric tag used for the partition identifier
-const PARTITION_TAG_NAME = "partition"
+// PartitionTagName represents the metric tag used for the partition identifier
+const PartitionTagName = "partition"
 
 // LookupPartition defines a partition for the LookupPartitionStrategy
 // Note: generally speaking you shouldn't use this directly, instead use the higher level LookupPartitionStrategy
@@ -23,6 +23,7 @@ type LookupPartition struct {
 	busy                 *int32
 }
 
+// NewLookupPartitionWithMetricRegistry will create a new LookupPartition
 func NewLookupPartitionWithMetricRegistry(name string, percent float64, limit int32, registry core.MetricRegistry) LookupPartition {
 	pLimit := int32(limit)
 	if pLimit < 1 {
@@ -35,8 +36,8 @@ func NewLookupPartitionWithMetricRegistry(name string, percent float64, limit in
 		limit:   &pLimit,
 		busy:    &busy,
 	}
-	sampleListener := registry.RegisterDistribution(core.MetricInFlight, PARTITION_TAG_NAME, name)
-	registry.RegisterGauge(core.MetricPartitionLimit, core.NewIntMetricSupplierWrapper(p.Limit), PARTITION_TAG_NAME, name)
+	sampleListener := registry.RegisterDistribution(core.MetricInFlight, PartitionTagName, name)
+	registry.RegisterGauge(core.MetricPartitionLimit, core.NewIntMetricSupplierWrapper(p.Limit), PartitionTagName, name)
 	p.MetricSampleListener = sampleListener
 	return p
 }
@@ -106,7 +107,7 @@ type LookupPartitionStrategy struct {
 	limit int32
 }
 
-// NewLookupPartitionStrategy will create a new LookupPartitionStrategy
+// NewLookupPartitionStrategyWithMetricRegistry will create a new LookupPartitionStrategy
 func NewLookupPartitionStrategyWithMetricRegistry(
 	partitions map[string]*LookupPartition,
 	lookupFunc func(ctx context.Context) string,

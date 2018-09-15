@@ -10,6 +10,7 @@ type MinimumMeasurement struct {
 	mu    sync.RWMutex
 }
 
+// Add will compare the sample and save if it's the minimum value.
 func (m *MinimumMeasurement) Add(sample float64) (float64, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -20,12 +21,14 @@ func (m *MinimumMeasurement) Add(sample float64) (float64, bool) {
 	return m.value, oldValue == m.value
 }
 
+// Get will return the current minimum value
 func (m *MinimumMeasurement) Get() float64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.value
 }
 
+// Reset will reset the minimum value to 0.0
 func (m *MinimumMeasurement) Reset() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

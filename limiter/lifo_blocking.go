@@ -129,16 +129,23 @@ func (l *LifoBlockingListener) unblock() {
 	}
 }
 
+// OnDropped is called to indicate the request failed and was dropped due to being rejected by an external limit or
+// hitting a timeout.  Loss based Limit implementations will likely do an aggressive reducing in limit when this
+// happens.
 func (l *LifoBlockingListener) OnDropped() {
 	l.delegateListener.OnDropped()
 	l.unblock()
 }
 
+// OnIgnore is called to indicate the operation failed before any meaningful RTT measurement could be made and
+// should be ignored to not introduce an artificially low RTT.
 func (l *LifoBlockingListener) OnIgnore() {
 	l.delegateListener.OnIgnore()
 	l.unblock()
 }
 
+// OnSuccess is called as a notification that the operation succeeded and internally measured latency should be
+// used as an RTT sample.
 func (l *LifoBlockingListener) OnSuccess() {
 	l.delegateListener.OnSuccess()
 	l.unblock()
@@ -160,6 +167,7 @@ type LifoBlockingLimiter struct {
 	mu      sync.RWMutex
 }
 
+// NewLifoBlockingLimiter will create a new LifoBlockingLimiter
 func NewLifoBlockingLimiter(
 	delegate core.Limiter,
 	maxBacklogSize int,
@@ -181,6 +189,7 @@ func NewLifoBlockingLimiter(
 	}
 }
 
+// NewLifoBlockingLimiterWithDefaults will create a new LifoBlockingLimiter with default values.
 func NewLifoBlockingLimiterWithDefaults(
 	delegate core.Limiter,
 ) *LifoBlockingLimiter {
@@ -213,6 +222,11 @@ func (l *LifoBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 	}
 }
 
+// Acquire a token from the limiter.  Returns an Optional.empty() if the limit has been exceeded.
+// If acquired the caller must call one of the Listener methods when the operation has been completed to release
+// the count.
+//
+// context Context for the request. The context is used by advanced strategies such as LookupPartitionStrategy.
 func (l *LifoBlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	panic("implement me")
 }
