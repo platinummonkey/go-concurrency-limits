@@ -1,3 +1,10 @@
+addons:
+  apt:
+    packages:
+      - python-pygments
+install:
+  - wget https://github.com/gohugoio/hugo/releases/download/v0.48/hugo_0.48_Linux-64bit.deb
+  - sudo dpkg -i hugo_0.48_Linux-64bit.deb
 language: go
 go:
   - "1.10"
@@ -11,5 +18,16 @@ deploy:
   on:
     branch: master
   local-dir: docs
-script: go test -v -coverprofile=cover.out ./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers
-after_script: go tool cover -func=cover.out
+before_script:
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
+  - go get golang.org/x/lint/golint
+  - go fmt ./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers
+  - golint ./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers
+  - go vet ./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers
+script:
+  - go test -v -race
+  - go test -v -covermode=count -coverprofile=coverage.out ./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers
+  - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
+after_success:
+  - cd docs && hugo

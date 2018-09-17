@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/platinummonkey/go-concurrency-limits.svg?branch=master)](https://travis-ci.org/platinummonkey/go-concurrency-limits)
+[![Build Status](https://travis-ci.org/platinummonkey/go-concurrency-limits.svg?branch=master)](https://travis-ci.org/platinummonkey/go-concurrency-limits) [![Coverage Status](https://coveralls.io/repos/github/platinummonkey/go-concurrency-limits/badge.svg?branch=master)](https://coveralls.io/github/platinummonkey/go-concurrency-limits?branch=master)
 
 # Overview
 
