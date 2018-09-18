@@ -33,4 +33,4 @@ script:
   - go test -v -race -covermode=count -coverprofile=coverage.out $TEST_PACKAGES
   - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
 after_success:
-  - cd docs && hugo
+  - cd docs && hugo && mv docs/* .
