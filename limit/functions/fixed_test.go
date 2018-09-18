@@ -1,8 +1,9 @@
 package functions
 
 import (
-	"github.com/magiconair/properties/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFixedQueueSizeFunc(t *testing.T) {
