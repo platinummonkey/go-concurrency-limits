@@ -30,7 +30,7 @@ before_script:
   - golint $TEST_PACKAGES
   - go vet $TEST_PACKAGES
 script:
-  - go test -v -race -covermode=count -coverprofile=coverage.out $TEST_PACKAGES
+  - go test -v -race -covermode=atomic -coverprofile=coverage.out $TEST_PACKAGES
   - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken $COVERALLS_TOKEN
 after_success:
   - cd docs && hugo && mv docs/* .
