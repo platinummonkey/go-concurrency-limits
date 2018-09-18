@@ -10,7 +10,7 @@ import (
 func TestNoopLimitLogger(t *testing.T) {
 	asrt := assert.New(t)
 	l := NoopLimitLogger{}
-	asrt.NotPanics(func() {l.Debugf("")})
+	asrt.NotPanics(func() { l.Debugf("") })
 	asrt.False(l.IsDebugEnabled())
 	asrt.Equal("NoopLimitLogger{}", l.String())
 }
@@ -18,7 +18,7 @@ func TestNoopLimitLogger(t *testing.T) {
 func TestBuiltinLimitLogger(t *testing.T) {
 	asrt := assert.New(t)
 	l := BuiltinLimitLogger{}
-	asrt.NotPanics(func() {l.Debugf("")})
+	asrt.NotPanics(func() { l.Debugf("") })
 	asrt.True(l.IsDebugEnabled())
 	asrt.Equal("BuiltinLimitLogger{}", l.String())
 }
