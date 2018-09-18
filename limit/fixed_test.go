@@ -21,4 +21,6 @@ func TestFixedLimit(t *testing.T) {
 
 	l.Update(measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(100))
 	asrt.Equal(10, l.EstimatedLimit())
+
+	asrt.Equal("FixedLimit{limit=10}", l.String())
 }

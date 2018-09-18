@@ -19,6 +19,16 @@ func TestSimpleStrategy(t *testing.T) {
 		strategy := NewSimpleStrategy(1)
 		asrt.Equal(1, strategy.GetLimit(), "expected a default limit of 1")
 		asrt.Equal(0, strategy.GetBusyCount(), "expected all resources free")
+		asrt.Contains(strategy.String(), "SimpleStrategy{inFlight=0, ")
+	})
+
+	t.Run("SetLimit", func(t2 *testing.T) {
+		asrt := assert.New(t2)
+		strategy := NewSimpleStrategy(1)
+		asrt.Equal(1, strategy.GetLimit(), "expected a default limit of 1")
+		strategy.SetLimit(2)
+		asrt.Equal(2, strategy.GetLimit())
+		asrt.Equal(0, strategy.GetBusyCount(), "expected all resources free")
 	})
 
 	t.Run("AcquireIncrementsBusy", func(t2 *testing.T) {

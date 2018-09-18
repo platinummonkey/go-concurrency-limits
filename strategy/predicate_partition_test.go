@@ -29,6 +29,27 @@ func makeTestPartitions() []*PredicatePartition {
 
 func TestPredicatePartition(t *testing.T) {
 
+	t.Run("partitions", func(t2 *testing.T) {
+		asrt := assert.New(t2)
+		partitions := makeTestPartitions()
+		asrt.Equal("batch", partitions[0].Name())
+		asrt.Equal("PredicatePartition{name=batch, percent=0.300000, limit=1, busy=0}", partitions[0].String())
+	})
+
+	t.Run("NewPredicatePartition", func(t2 *testing.T) {
+		asrt := assert.New(t2)
+		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(
+			makeTestPartitions(),
+			1,
+			core.EmptyMetricRegistryInstance)
+		asrt.NoError(err, "failed to create strategy")
+		asrt.NotNil(strategy)
+		asrt.Equal(
+			"PredicatePartitionStrategy{partitions=[PredicatePartition{name=batch, percent=0.300000, limit=1, busy=0} PredicatePartition{name=live, percent=0.700000, limit=1, busy=0}], limit=1, busy=0}",
+			strategy.String(),
+		)
+	})
+
 	t.Run("LimitAllocatedToBins", func(t2 *testing.T) {
 		asrt := assert.New(t2)
 		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(

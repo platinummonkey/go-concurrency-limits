@@ -30,6 +30,8 @@ func TestVegasLimit(t *testing.T) {
 	t.Run("InitialLimit", func(t2 *testing.T) {
 		l := createVegasLimit()
 		assert.Equal(t2, l.EstimatedLimit(), 10)
+		assert.Equal(t2, l.RTTNoLoad(), int64(0))
+		assert.Equal(t2, "VegasLimit{limit=10, rttNoLoad=0 ms}", l.String())
 	})
 
 	t.Run("IncreaseLimit", func(t2 *testing.T) {

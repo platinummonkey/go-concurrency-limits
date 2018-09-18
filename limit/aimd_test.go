@@ -9,10 +9,17 @@ import (
 )
 
 func TestAIMDLimit(t *testing.T) {
+	t.Run("DefaultAIMD", func(t2 *testing.T) {
+		asrt := assert.New(t2)
+		l := NewDefaultAIMLimit()
+		asrt.Equal(10, l.EstimatedLimit())
+	})
+
 	t.Run("Default", func(t2 *testing.T) {
 		asrt := assert.New(t2)
 		l := NewAIMDLimit(10, 0.9)
 		asrt.Equal(10, l.EstimatedLimit())
+		asrt.Equal(0.9, l.BackOffRatio())
 	})
 
 	t.Run("IncreaseOnSuccess", func(t2 *testing.T) {
@@ -27,5 +34,11 @@ func TestAIMDLimit(t *testing.T) {
 		l := NewAIMDLimit(10, 0.9)
 		l.Update(measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(1))
 		asrt.Equal(9, l.EstimatedLimit())
+	})
+
+	t.Run("String", func(t2 *testing.T) {
+		asrt := assert.New(t2)
+		l := NewAIMDLimit(10, 0.9)
+		asrt.Equal("AIMDLimit{limit=10, backOffRatio=0.9000}", l.String())
 	})
 }
