@@ -3,11 +3,10 @@ package strategy
 import (
 	"context"
 	"fmt"
+	"github.com/platinummonkey/go-concurrency-limits/core"
+	"github.com/platinummonkey/go-concurrency-limits/strategy/matchers"
 	"math"
 	"sync"
-	"sync/atomic"
-
-	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
 // PartitionTagName represents the metric tag used for the partition identifier
@@ -19,37 +18,46 @@ type LookupPartition struct {
 	name                 string
 	percent              float64
 	MetricSampleListener core.MetricSampleListener
-	limit                *int32
-	busy                 *int32
+	limit                int32
+	busy                 int32
+	mu                   sync.RWMutex
 }
 
 // NewLookupPartitionWithMetricRegistry will create a new LookupPartition
-func NewLookupPartitionWithMetricRegistry(name string, percent float64, limit int32, registry core.MetricRegistry) LookupPartition {
+func NewLookupPartitionWithMetricRegistry(
+	name string,
+	percent float64,
+	limit int32,
+	registry core.MetricRegistry,
+) *LookupPartition {
 	pLimit := int32(limit)
 	if pLimit < 1 {
 		pLimit = 1
 	}
-	busy := int32(0)
 	p := LookupPartition{
 		name:    name,
 		percent: percent,
-		limit:   &pLimit,
-		busy:    &busy,
+		limit:   pLimit,
+		busy:    0,
 	}
 	sampleListener := registry.RegisterDistribution(core.MetricInFlight, PartitionTagName, name)
 	registry.RegisterGauge(core.MetricPartitionLimit, core.NewIntMetricSupplierWrapper(p.Limit), PartitionTagName, name)
 	p.MetricSampleListener = sampleListener
-	return p
+	return &p
 }
 
 // BusyCount will return the current limit
 func (p *LookupPartition) BusyCount() int {
-	return int(atomic.LoadInt32(p.busy))
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return int(p.busy)
 }
 
 // Limit will return the current limit
 func (p *LookupPartition) Limit() int {
-	return int(atomic.LoadInt32(p.limit))
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return int(p.limit)
 }
 
 // UpdateLimit will update the current limit
@@ -57,27 +65,35 @@ func (p *LookupPartition) Limit() int {
 // is at least 1.  With this technique the sum of bin limits may end up being
 // higher than the concurrency limit.
 func (p *LookupPartition) UpdateLimit(totalLimit int32) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
 	limit := int32(math.Max(1, math.Ceil(float64(totalLimit)*p.percent)))
-	atomic.StoreInt32(p.limit, limit)
+	p.limit = limit
 }
 
 // IsLimitExceeded will return true of the number of requests in flight >= limit
 // note: not thread safe.
 func (p *LookupPartition) IsLimitExceeded() bool {
-	return atomic.LoadInt32(p.limit) >= atomic.LoadInt32(p.busy)
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.busy >= p.limit
 }
 
 // Acquire from the worker pool
 // note: not to be used directly, not thread safe.
 func (p *LookupPartition) Acquire() {
-	busyCount := atomic.AddInt32(p.busy, 1)
-	p.MetricSampleListener.AddSample(float64(busyCount))
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.busy++
+	p.MetricSampleListener.AddSample(float64(p.busy))
 }
 
 // Release from the worker pool
 // note: not to be used directly, not thread safe.
 func (p *LookupPartition) Release() {
-	atomic.AddInt32(p.busy, -1)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.busy--
 }
 
 // Name will return the partition name, these are immutable.
@@ -91,15 +107,17 @@ func (p *LookupPartition) Percent() float64 {
 }
 
 func (p *LookupPartition) String() string {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
 	return fmt.Sprintf("LookupPartition{name=%s, percent=%f, limit=%d, busy=%d}",
-		p.name, p.percent, atomic.LoadInt32(p.limit), atomic.LoadInt32(p.busy))
+		p.name, p.percent, p.limit, p.busy)
 }
 
 // LookupPartitionStrategy defines the strategy for partitioning the limiter by named groups where the allocation of
 // group to percentage is provided up front.
 type LookupPartitionStrategy struct {
 	partitions       map[string]*LookupPartition
-	unknownPartition LookupPartition
+	unknownPartition *LookupPartition
 	lookupFunc       func(ctx context.Context) string
 
 	mu    sync.RWMutex
@@ -121,9 +139,15 @@ func NewLookupPartitionStrategyWithMetricRegistry(
 	sum := float64(0)
 	for _, v := range partitions {
 		sum += v.Percent()
+		// update limit
+		v.UpdateLimit(limit)
 	}
 	if sum > 1.0 {
 		return nil, fmt.Errorf("sum of percentages must be <= 1.0")
+	}
+
+	if lookupFunc == nil {
+		lookupFunc = matchers.DefaultStringLookupFunc
 	}
 
 	unknownPartition := NewLookupPartitionWithMetricRegistry("unknown", 0.0, limit, registry)
@@ -147,7 +171,7 @@ func (s *LookupPartitionStrategy) TryAcquire(ctx context.Context) (token core.St
 	partitionName := s.lookupFunc(ctx)
 	partition, ok := s.partitions[partitionName]
 	if !ok {
-		partition = &s.unknownPartition
+		partition = s.unknownPartition
 	}
 	if s.busy >= s.limit && partition.IsLimitExceeded() {
 		return core.NewNotAcquiredStrategyToken(int(s.busy)), false
@@ -175,6 +199,7 @@ func (s *LookupPartitionStrategy) SetLimit(limit int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.limit != int32(limit) {
+		s.limit = int32(limit)
 		// only do it if they don't match, otherwise it's just extra churn by O(N)
 		for _, v := range s.partitions {
 			v.UpdateLimit(int32(limit))

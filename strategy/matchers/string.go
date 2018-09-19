@@ -31,3 +31,19 @@ func StringPredicateMatcher(matchString string, caseInsensitive bool) func(ctx c
 		return false
 	}
 }
+
+// LookupPartitionContextKey is the StringLookup context key
+// use this in your context.Context
+const LookupPartitionContextKey = strategyContextKey("stringLookup")
+
+// DefaultStringLookupFunc implements the default string lookup partition based on single-value matching.
+func DefaultStringLookupFunc(ctx context.Context) string {
+	val := ctx.Value(LookupPartitionContextKey)
+	if val != nil {
+		strVal, ok := val.(string)
+		if ok {
+			return strVal
+		}
+	}
+	return ""
+}
