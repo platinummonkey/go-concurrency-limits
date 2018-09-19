@@ -58,7 +58,7 @@ func TestLookupPartitionStrategy(t *testing.T) {
 
 		// Check stringer
 		asrt.Equal(
-			"LookupPartitionStrategy{partitions=map[batch:LookupPartition{name=batch, percent=0.300000, limit=3, busy=0} live:LookupPartition{name=live, percent=0.700000, limit=7, busy=0}], unknownPartition=LookupPartition{name=unknown, percent=0.000000, limit=10, busy=0}, limit=10, busy=0}",
+			"LookupPartitionStrategy{partitions=map[batch:LookupPartition{name=batch, percent=0.300000, limit=3, busy=0} live:LookupPartition{name=live, percent=0.700000, limit=7, busy=0}], unknownPartition=LookupPartition{name=<unknown>, percent=0.000000, limit=10, busy=0}, limit=10, busy=0}",
 			strategy.String(),
 		)
 		asrt.Equal("batch", strategy.partitions["batch"].Name())
