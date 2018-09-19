@@ -150,7 +150,7 @@ func NewLookupPartitionStrategyWithMetricRegistry(
 		lookupFunc = matchers.DefaultStringLookupFunc
 	}
 
-	unknownPartition := NewLookupPartitionWithMetricRegistry("unknown", 0.0, limit, registry)
+	unknownPartition := NewLookupPartitionWithMetricRegistry("<unknown>", 0.0, limit, registry)
 	strategy := &LookupPartitionStrategy{
 		partitions:       partitions,
 		unknownPartition: unknownPartition,

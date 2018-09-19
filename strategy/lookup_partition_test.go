@@ -61,6 +61,8 @@ func TestLookupPartitionStrategy(t *testing.T) {
 			"LookupPartitionStrategy{partitions=map[batch:LookupPartition{name=batch, percent=0.300000, limit=3, busy=0} live:LookupPartition{name=live, percent=0.700000, limit=7, busy=0}], unknownPartition=LookupPartition{name=unknown, percent=0.000000, limit=10, busy=0}, limit=10, busy=0}",
 			strategy.String(),
 		)
+		asrt.Equal("batch", strategy.partitions["batch"].Name())
+		asrt.Equal("live", strategy.partitions["live"].Name())
 	})
 
 	t.Run("LimitAllocatedToBins", func(t2 *testing.T) {
@@ -68,7 +70,7 @@ func TestLookupPartitionStrategy(t *testing.T) {
 		strategy, err := NewLookupPartitionStrategyWithMetricRegistry(
 			makeTestLookupPartitions(),
 			nil,
-			1,
+			-1, // let default 1 take over
 			core.EmptyMetricRegistryInstance,
 		)
 		asrt.NoError(err, "failed to create strategy")

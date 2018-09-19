@@ -2,6 +2,7 @@ package limiter
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 
@@ -10,6 +11,24 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/strategy"
 	"github.com/stretchr/testify/assert"
 )
+
+type testListener struct {
+	successCount int
+	ignoreCount  int
+	dropCount    int
+}
+
+func (l *testListener) OnSuccess() {
+	l.successCount++
+}
+
+func (l *testListener) OnIgnore() {
+	l.ignoreCount++
+}
+
+func (l *testListener) OnDropped() {
+	l.dropCount++
+}
 
 func TestBlockingLimiter(t *testing.T) {
 	t.Run("Unblocked", func(t2 *testing.T) {
@@ -31,6 +50,8 @@ func TestBlockingLimiter(t *testing.T) {
 		}
 		asrt.NotNil(defaultLimiter)
 		blockingLimiter := NewBlockingLimiter(defaultLimiter)
+		// stringer
+		asrt.True(strings.Contains(blockingLimiter.String(), "BlockingLimiter{delegate=DefaultLimiter{"))
 
 		var listeners []core.Listener
 		for i := 0; i < 10; i++ {
@@ -94,5 +115,23 @@ func TestBlockingLimiter(t *testing.T) {
 			sumReleased += <-released
 		}
 		asrt.Equal(8, sumReleased)
+	})
+
+	t.Run("BlockingListener", func(t2 *testing.T) {
+		asrt := assert.New(t2)
+		mu := sync.Mutex{}
+		c := sync.NewCond(&mu)
+		delegateListener := testListener{}
+		listener := BlockingListener{
+			delegateListener: &delegateListener,
+			c:                c,
+		}
+		listener.OnSuccess()
+		asrt.Equal(1, delegateListener.successCount)
+		listener.OnIgnore()
+		asrt.Equal(1, delegateListener.ignoreCount)
+		listener.OnDropped()
+		asrt.Equal(1, delegateListener.dropCount)
+
 	})
 }
