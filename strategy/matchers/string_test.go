@@ -8,6 +8,8 @@ import (
 )
 
 func TestStringPredicateMatcher(t *testing.T) {
+	t.Parallel()
+
 	asrt := assert.New(t)
 	matcher := StringPredicateMatcher("foo", false)
 	ctx1 := context.WithValue(context.Background(), StringPredicateContextKey, "foo")
@@ -29,6 +31,8 @@ func TestStringPredicateMatcher(t *testing.T) {
 }
 
 func TestDefaultStringLookupFunc(t *testing.T) {
+	t.Parallel()
+
 	asrt := assert.New(t)
 	f := DefaultStringLookupFunc
 	ctx1 := context.WithValue(context.Background(), LookupPartitionContextKey, "foo")

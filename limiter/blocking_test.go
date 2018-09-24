@@ -6,10 +6,11 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/platinummonkey/go-concurrency-limits/core"
 	"github.com/platinummonkey/go-concurrency-limits/limit"
 	"github.com/platinummonkey/go-concurrency-limits/strategy"
-	"github.com/stretchr/testify/assert"
 )
 
 type testListener struct {

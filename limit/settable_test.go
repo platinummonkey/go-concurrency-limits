@@ -1,13 +1,15 @@
 package limit
 
 import (
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 func TestSettableLimit(t *testing.T) {
+	t.Parallel()
 	asrt := assert.New(t)
 	l := NewSettableLimit(10)
 	asrt.Equal(10, l.EstimatedLimit())

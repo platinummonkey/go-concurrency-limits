@@ -4,10 +4,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/platinummonkey/go-concurrency-limits/core"
 	"github.com/platinummonkey/go-concurrency-limits/limit/functions"
 	"github.com/platinummonkey/go-concurrency-limits/measurements"
-	"github.com/stretchr/testify/assert"
 )
 
 func createVegasLimit() *VegasLimit {
@@ -26,18 +27,22 @@ func createVegasLimit() *VegasLimit {
 }
 
 func TestVegasLimit(t *testing.T) {
+	t.Parallel()
 
 	t.Run("NewDefaultVegasLimit", func(t2 *testing.T) {
+		t2.Parallel()
 		l := NewDefaultVegasLimit(NoopLimitLogger{}, core.EmptyMetricRegistryInstance)
 		assert.Equal(t2, 20, l.EstimatedLimit())
 	})
 
 	t.Run("NewDefaultVegasLimitWithLimit", func(t2 *testing.T) {
+		t2.Parallel()
 		l := NewDefaultVegasLimitWithLimit(5, NoopLimitLogger{}, core.EmptyMetricRegistryInstance)
 		assert.Equal(t2, 5, l.EstimatedLimit())
 	})
 
 	t.Run("InitialLimit", func(t2 *testing.T) {
+		t2.Parallel()
 		l := createVegasLimit()
 		assert.Equal(t2, l.EstimatedLimit(), 10)
 		assert.Equal(t2, l.RTTNoLoad(), int64(0))
@@ -45,6 +50,7 @@ func TestVegasLimit(t *testing.T) {
 	})
 
 	t.Run("IncreaseLimit", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		l := createVegasLimit()
 		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
@@ -54,6 +60,7 @@ func TestVegasLimit(t *testing.T) {
 	})
 
 	t.Run("DecreaseLimit", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		l := createVegasLimit()
 		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
@@ -63,6 +70,7 @@ func TestVegasLimit(t *testing.T) {
 	})
 
 	t.Run("NoChangeIfWithinThresholds", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		l := createVegasLimit()
 		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
@@ -72,6 +80,7 @@ func TestVegasLimit(t *testing.T) {
 	})
 
 	t.Run("DecreaseSmoothing", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewVegasLimitWithRegistry(
 			100,
@@ -102,6 +111,7 @@ func TestVegasLimit(t *testing.T) {
 	})
 
 	t.Run("DecreaseWithoutSmoothing", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewVegasLimitWithRegistry(
 			100,

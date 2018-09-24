@@ -3,8 +3,9 @@ package limiter
 import (
 	"context"
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/core"
 	"sync"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
 // BlockingListener wraps the wrapped Limiter's Listener to correctly handle releasing blocked connections

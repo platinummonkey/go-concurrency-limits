@@ -2,11 +2,12 @@ package strategy
 
 import (
 	"context"
-	"github.com/platinummonkey/go-concurrency-limits/strategy/matchers"
 	"testing"
 
-	"github.com/platinummonkey/go-concurrency-limits/core"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
+	"github.com/platinummonkey/go-concurrency-limits/strategy/matchers"
 )
 
 func makeTestPartitions() []*PredicatePartition {
@@ -28,8 +29,10 @@ func makeTestPartitions() []*PredicatePartition {
 }
 
 func TestPredicatePartition(t *testing.T) {
+	t.Parallel()
 
 	t.Run("partitions", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		partitions := makeTestPartitions()
 		asrt.Equal("batch", partitions[0].Name())
@@ -37,6 +40,7 @@ func TestPredicatePartition(t *testing.T) {
 	})
 
 	t.Run("NewPredicatePartition", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(
 			makeTestPartitions(),
@@ -51,6 +55,7 @@ func TestPredicatePartition(t *testing.T) {
 	})
 
 	t.Run("NewPredicatePartitionError", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(
 			make([]*PredicatePartition, 0),
@@ -73,6 +78,7 @@ func TestPredicatePartition(t *testing.T) {
 	})
 
 	t.Run("LimitAllocatedToBins", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(
 			makeTestPartitions(),
@@ -98,6 +104,7 @@ func TestPredicatePartition(t *testing.T) {
 	})
 
 	t.Run("UseExcessCapacityUntilTotalLimit", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(
 			makeTestPartitions(),
@@ -128,6 +135,7 @@ func TestPredicatePartition(t *testing.T) {
 	})
 
 	t.Run("ExceedTotalLimitForUnusedBin", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(
 			makeTestPartitions(),
@@ -164,6 +172,7 @@ func TestPredicatePartition(t *testing.T) {
 	})
 
 	t.Run("RejectOnceAllLimitsReached", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(
 			makeTestPartitions(),
@@ -213,6 +222,7 @@ func TestPredicatePartition(t *testing.T) {
 	})
 
 	t.Run("ReleaseLimit", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(
 			makeTestPartitions(),
@@ -263,6 +273,7 @@ func TestPredicatePartition(t *testing.T) {
 	})
 
 	t.Run("SetLimitReservesBusy", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(
 			makeTestPartitions(),

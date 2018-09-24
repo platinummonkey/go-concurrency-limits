@@ -3,7 +3,6 @@ package limiter
 import (
 	"context"
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 	"math"
 	"sync"
 	"sync/atomic"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
 	"github.com/platinummonkey/go-concurrency-limits/limit"
+	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 const (
@@ -165,6 +165,7 @@ func NewDefaultLimiter(
 		minRTTThreshold: minRTTThreshold,
 		windowSize:      windowSize,
 		inFlight:        &inFlight,
+		sample:          measurements.NewDefaultImmutableSampleWindow(),
 		logger:          logger,
 		registry:        registry,
 	}, nil

@@ -7,6 +7,8 @@ import (
 )
 
 func TestFixedQueueSizeFunc(t *testing.T) {
+	t.Parallel()
+
 	f := FixedQueueSizeFunc(4)
 	for i := -4; i < 5; i++ {
 		assert.Equal(t, 4, f(0))

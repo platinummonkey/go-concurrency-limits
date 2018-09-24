@@ -3,10 +3,11 @@ package strategy
 import (
 	"context"
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/core"
-	"github.com/platinummonkey/go-concurrency-limits/strategy/matchers"
 	"math"
 	"sync"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
+	"github.com/platinummonkey/go-concurrency-limits/strategy/matchers"
 )
 
 // PartitionTagName represents the metric tag used for the partition identifier

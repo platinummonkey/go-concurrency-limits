@@ -8,13 +8,17 @@ import (
 )
 
 func TestSimpleStrategy(t *testing.T) {
+	t.Parallel()
+
 	t.Run("LimitLessThanOneSetAsOne", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy := NewSimpleStrategy(-10)
 		asrt.Equal(1, strategy.GetLimit(), "expected a default limit of 1")
 	})
 
 	t.Run("InitialState", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy := NewSimpleStrategy(1)
 		asrt.Equal(1, strategy.GetLimit(), "expected a default limit of 1")
@@ -23,6 +27,7 @@ func TestSimpleStrategy(t *testing.T) {
 	})
 
 	t.Run("SetLimit", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy := NewSimpleStrategy(0)
 		asrt.Equal(1, strategy.GetLimit(), "expected a default limit of 3")
@@ -35,6 +40,7 @@ func TestSimpleStrategy(t *testing.T) {
 	})
 
 	t.Run("AcquireIncrementsBusy", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy := NewSimpleStrategy(1)
 		asrt.Equal(0, strategy.GetBusyCount(), "expected all resources free")
@@ -45,6 +51,7 @@ func TestSimpleStrategy(t *testing.T) {
 	})
 
 	t.Run("ExceedingLimitReturnsFalse", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy := NewSimpleStrategy(1)
 		asrt.Equal(0, strategy.GetBusyCount(), "expected all resources free")
@@ -63,6 +70,7 @@ func TestSimpleStrategy(t *testing.T) {
 	})
 
 	t.Run("AcquireAndRelease", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy := NewSimpleStrategy(1)
 		asrt.Equal(0, strategy.GetBusyCount(), "expected all resources free")

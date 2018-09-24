@@ -1,21 +1,25 @@
 package limit
 
 import (
-	"github.com/platinummonkey/go-concurrency-limits/core"
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
+	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 func TestGradientLimit(t *testing.T) {
+	t.Parallel()
 	t.Run("nextProbeInterval", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		asrt.Equal(LimitProbeDisabled, nextProbeCountdown(LimitProbeDisabled))
 		asrt.True(nextProbeCountdown(1) > 0)
 	})
 
 	t.Run("Default", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewGradientLimitWithRegistry(
 			0,
@@ -35,6 +39,7 @@ func TestGradientLimit(t *testing.T) {
 	})
 
 	t.Run("panics with invalid RTT time", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewGradientLimitWithRegistry(
 			0,
@@ -54,6 +59,7 @@ func TestGradientLimit(t *testing.T) {
 	})
 
 	t.Run("Update", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewGradientLimitWithRegistry(
 			0,

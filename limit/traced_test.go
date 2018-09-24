@@ -1,13 +1,15 @@
 package limit
 
 import (
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 func TestNoopLimitLogger(t *testing.T) {
+	t.Parallel()
 	asrt := assert.New(t)
 	l := NoopLimitLogger{}
 	asrt.NotPanics(func() { l.Debugf("") })
@@ -16,6 +18,7 @@ func TestNoopLimitLogger(t *testing.T) {
 }
 
 func TestBuiltinLimitLogger(t *testing.T) {
+	t.Parallel()
 	asrt := assert.New(t)
 	l := BuiltinLimitLogger{}
 	asrt.NotPanics(func() { l.Debugf("") })
@@ -24,6 +27,7 @@ func TestBuiltinLimitLogger(t *testing.T) {
 }
 
 func TestTracedLimit(t *testing.T) {
+	t.Parallel()
 	asrt := assert.New(t)
 	delegate := NewSettableLimit(10)
 	l := NewTracedLimit(delegate, NoopLimitLogger{})

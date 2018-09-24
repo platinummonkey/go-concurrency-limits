@@ -2,13 +2,13 @@ package strategy
 
 import (
 	"context"
-	"github.com/platinummonkey/go-concurrency-limits/strategy/matchers"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
+	"github.com/platinummonkey/go-concurrency-limits/strategy/matchers"
 )
 
 func makeTestLookupPartitions() map[string]*LookupPartition {
@@ -30,8 +30,10 @@ func makeTestLookupPartitions() map[string]*LookupPartition {
 }
 
 func TestLookupPartitionStrategy(t *testing.T) {
+	t.Parallel()
 
 	t.Run("NewLookupPartitionStrategy", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewLookupPartitionStrategyWithMetricRegistry(
 			makeTestLookupPartitions(),
@@ -64,6 +66,7 @@ func TestLookupPartitionStrategy(t *testing.T) {
 	})
 
 	t.Run("LimitAllocatedToBins", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewLookupPartitionStrategyWithMetricRegistry(
 			makeTestLookupPartitions(),
@@ -93,6 +96,7 @@ func TestLookupPartitionStrategy(t *testing.T) {
 	})
 
 	t.Run("UseExcessCapacityUntilTotalLimit", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewLookupPartitionStrategyWithMetricRegistry(
 			makeTestLookupPartitions(),
@@ -125,6 +129,7 @@ func TestLookupPartitionStrategy(t *testing.T) {
 	})
 
 	t.Run("ExceedTotalLimitForUnusedBin", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewLookupPartitionStrategyWithMetricRegistry(
 			makeTestLookupPartitions(),
@@ -163,6 +168,7 @@ func TestLookupPartitionStrategy(t *testing.T) {
 	})
 
 	t.Run("RejectOnceAllLimitsReached", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewLookupPartitionStrategyWithMetricRegistry(
 			makeTestLookupPartitions(),
@@ -214,6 +220,7 @@ func TestLookupPartitionStrategy(t *testing.T) {
 	})
 
 	t.Run("ReleaseLimit", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewLookupPartitionStrategyWithMetricRegistry(
 			makeTestLookupPartitions(),
@@ -266,6 +273,7 @@ func TestLookupPartitionStrategy(t *testing.T) {
 	})
 
 	t.Run("SetLimitReservesBusy", func(t2 *testing.T) {
+		t2.Parallel()
 		asrt := assert.New(t2)
 		strategy, err := NewLookupPartitionStrategyWithMetricRegistry(
 			makeTestLookupPartitions(),

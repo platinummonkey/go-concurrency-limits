@@ -3,9 +3,10 @@ package limiter
 import (
 	"context"
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/core"
 	"sync"
 	"time"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
 type lifoElement struct {
@@ -61,7 +62,9 @@ func (q *lifoQueue) pop() *lifoElement {
 	if q.size > 0 {
 		prev := lifoElement(*q.top)
 		next := q.top.next
-		next.prev = nil
+		if next != nil {
+			next.prev = nil
+		}
 		q.top.next = nil
 		q.top.prev = nil
 		q.top = next
@@ -90,6 +93,9 @@ func (q *lifoQueue) remove(id uint64) {
 	var prev *lifoElement
 	cur := q.top
 	for {
+		if cur == nil {
+			return
+		}
 		if cur.id == id {
 			next := cur.next
 			if prev == nil {
@@ -98,6 +104,7 @@ func (q *lifoQueue) remove(id uint64) {
 				q.top.next = nil
 				q.top.prev = nil
 				q.top = next
+				q.top.id--
 				q.size--
 				return
 			}
@@ -105,7 +112,19 @@ func (q *lifoQueue) remove(id uint64) {
 			prev.next = cur.next
 			q.size--
 			return
+
+			// fix all id's above
+			/*cur = prev
+			for {
+				cur.id--
+				if cur.prev == nil {
+					return
+				}
+			}*/
 		}
+		cur.id--
+		prev = cur
+		cur = cur.next
 	}
 }
 
@@ -228,7 +247,14 @@ func (l *LifoBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 //
 // context Context for the request. The context is used by advanced strategies such as LookupPartitionStrategy.
 func (l *LifoBlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
-	panic("implement me")
+	delegateListener := l.tryAcquire(ctx)
+	if delegateListener == nil {
+		return nil, false
+	}
+	return &LifoBlockingListener{
+		delegateListener: delegateListener,
+		limiter:          l,
+	}, true
 }
 
 func (l *LifoBlockingLimiter) String() string {
