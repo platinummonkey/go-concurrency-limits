@@ -13,6 +13,12 @@ func TestExponentialAverageMeasurement(t *testing.T) {
 	asrt.Equal(float64(0.0), m.Get())
 	m.Add(1)
 	asrt.Equal(float64(1.0), m.Get())
+
+	m.Reset()
+	asrt.Equal(float64(0.0), m.Get())
+
+	m.Add(1)
+	asrt.Equal(float64(1.0), m.Get())
 	m.Add(2)
 	asrt.Equal(float64(1.5), m.Get())
 	m.Add(15.5)
