@@ -34,8 +34,8 @@ func TestTracedLimit(t *testing.T) {
 
 	asrt.Equal(10, l.EstimatedLimit())
 
-	m := measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(1)
-	l.Update(m)
+	m := measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(-1, 1)
+	l.OnSample(m)
 	asrt.Equal(10, l.EstimatedLimit())
 
 	asrt.Equal("TracedLimit{limit=SettableLimit{limit=10}, logger=NoopLimitLogger{}}", l.String())

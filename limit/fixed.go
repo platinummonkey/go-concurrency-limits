@@ -23,8 +23,8 @@ func (l *FixedLimit) EstimatedLimit() int {
 	return l.limit
 }
 
-// Update will update the limit with the sample.
-func (l *FixedLimit) Update(sample core.SampleWindow) {
+// OnSample will update the limit with the sample.
+func (l *FixedLimit) OnSample(sample core.SampleWindow) {
 	// noop for fixed limit
 }
 

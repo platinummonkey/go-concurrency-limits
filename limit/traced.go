@@ -68,11 +68,11 @@ func (l *TracedLimit) EstimatedLimit() int {
 	return estimatedLimit
 }
 
-// Update will log and deleate the update of the sample.
-func (l *TracedLimit) Update(sample core.SampleWindow) {
+// OnSample will log and deleate the update of the sample.
+func (l *TracedLimit) OnSample(sample core.SampleWindow) {
 	l.logger.Debugf("sampleCount=%d, maxInFlight=%d, minRtt=%d ms",
 		sample.SampleCount(), sample.MaxInFlight(), sample.CandidateRTTNanoseconds()/1e6)
-	l.limit.Update(sample)
+	l.limit.OnSample(sample)
 }
 
 func (l TracedLimit) String() string {

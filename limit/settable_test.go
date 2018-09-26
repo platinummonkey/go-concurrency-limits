@@ -18,8 +18,8 @@ func TestSettableLimit(t *testing.T) {
 	asrt.Equal(5, l.EstimatedLimit())
 
 	// should be a noop
-	m := measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(1)
-	l.Update(m)
+	m := measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(-1, 1)
+	l.OnSample(m)
 	asrt.Equal(5, l.EstimatedLimit())
 
 	asrt.Equal("SettableLimit{limit=5}", l.String())

@@ -3,10 +3,12 @@ package measurements
 import (
 	"fmt"
 	"math"
+	"time"
 )
 
 // ImmutableSampleWindow is used to track immutable samples atomically.
 type ImmutableSampleWindow struct {
+	startTime   int64
 	minRTT      int64
 	maxInFlight int
 	sampleCount int
@@ -16,11 +18,19 @@ type ImmutableSampleWindow struct {
 
 // NewDefaultImmutableSampleWindow will create a new ImmutableSampleWindow with defaults
 func NewDefaultImmutableSampleWindow() *ImmutableSampleWindow {
-	return NewImmutableSampleWindow(math.MaxInt64, 0, 0, 0, false)
+	return NewImmutableSampleWindow(
+		time.Now().UnixNano(),
+		math.MaxInt64,
+		0,
+		0,
+		0,
+		false,
+	)
 }
 
 // NewImmutableSampleWindow will create a new ImmutableSampleWindow with defaults
 func NewImmutableSampleWindow(
+	startTime int64,
 	minRTT int64,
 	sum int64,
 	maxInFlight int,
@@ -31,6 +41,7 @@ func NewImmutableSampleWindow(
 		minRTT = math.MaxInt64
 	}
 	return &ImmutableSampleWindow{
+		startTime:   startTime,
 		minRTT:      minRTT,
 		sum:         sum,
 		maxInFlight: maxInFlight,
@@ -40,7 +51,7 @@ func NewImmutableSampleWindow(
 }
 
 // AddSample will create a new immutable sample for which to use.
-func (s *ImmutableSampleWindow) AddSample(rtt int64, maxInFlight int) *ImmutableSampleWindow {
+func (s *ImmutableSampleWindow) AddSample(startTime int64, rtt int64, maxInFlight int) *ImmutableSampleWindow {
 	minRTT := s.minRTT
 	if rtt < s.minRTT {
 		minRTT = rtt
@@ -48,15 +59,26 @@ func (s *ImmutableSampleWindow) AddSample(rtt int64, maxInFlight int) *Immutable
 	if maxInFlight < s.maxInFlight {
 		maxInFlight = s.maxInFlight
 	}
-	return NewImmutableSampleWindow(minRTT, s.sum+rtt, maxInFlight, s.sampleCount+1, false)
+	if startTime < 0 {
+		startTime = time.Now().UnixNano()
+	}
+	return NewImmutableSampleWindow(startTime, minRTT, s.sum+rtt, maxInFlight, s.sampleCount+1, false)
 }
 
 // AddDroppedSample will create a new immutable sample that was dropped.
-func (s *ImmutableSampleWindow) AddDroppedSample(maxInFlight int) *ImmutableSampleWindow {
+func (s *ImmutableSampleWindow) AddDroppedSample(startTime int64, maxInFlight int) *ImmutableSampleWindow {
 	if maxInFlight < s.maxInFlight {
 		maxInFlight = s.maxInFlight
 	}
-	return NewImmutableSampleWindow(s.minRTT, s.sum, maxInFlight, s.sampleCount, true)
+	if startTime < 0 {
+		startTime = time.Now().UnixNano()
+	}
+	return NewImmutableSampleWindow(startTime, s.minRTT, s.sum, maxInFlight, s.sampleCount, true)
+}
+
+// StartTimeNanoseoncds returns the epoch start time in nanoseconds.
+func (s *ImmutableSampleWindow) StartTimeNanoseconds() int64 {
+	return s.startTime
 }
 
 // CandidateRTTNanoseconds returns the candidate RTT in the sample window. This is traditionally the minimum rtt.

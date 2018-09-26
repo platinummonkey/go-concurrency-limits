@@ -26,8 +26,8 @@ func (l *SettableLimit) EstimatedLimit() int {
 	return int(atomic.LoadInt32(l.limit))
 }
 
-// Update will update the limit with the given sample.
-func (l *SettableLimit) Update(sample core.SampleWindow) {
+// OnSample will update the limit with the given sample.
+func (l *SettableLimit) OnSample(sample core.SampleWindow) {
 	// noop for SettableLimit
 }
 

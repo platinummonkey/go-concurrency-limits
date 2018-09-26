@@ -15,10 +15,15 @@ type MeasurementInterface interface {
 
 	// Reset the internal state as if no samples were ever added.
 	Reset()
+
+	// OnSample will update the value given an operation function
+	Update(operation func(value float64) float64)
 }
 
 // SampleWindow represents the details of the current sample window
 type SampleWindow interface {
+	// StartTimeNanoseoncds returns the epoch start time in nanoseconds.
+	StartTimeNanoseconds() int64
 	// CandidateRTTNanoseconds returns the candidate RTT in the sample window. This is traditionally the minimum rtt.
 	CandidateRTTNanoseconds() int64
 	// AverageRTTNanoseconds returns the average RTT in the sample window.  Excludes timeouts and dropped rtt.
@@ -35,9 +40,9 @@ type SampleWindow interface {
 type Limit interface {
 	// EstimatedLimit returns the current estimated limit.
 	EstimatedLimit() int
-	// Update the concurrency limit using a new rtt sample.
+	// OnSample the concurrency limit using a new rtt sample.
 	// @sample Data from the last sampling window such as RTT.
-	Update(sample SampleWindow)
+	OnSample(sample SampleWindow)
 }
 
 // Listener implements token listener for callback to the limiter when and how it should be released.

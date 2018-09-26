@@ -31,7 +31,7 @@ func TestAIMDLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewAIMDLimit(10, 0.9)
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 1).Nanoseconds(), 10))
+		l.OnSample(measurements.NewDefaultImmutableSampleWindow().AddSample(-1, (time.Millisecond * 1).Nanoseconds(), 10))
 		asrt.Equal(11, l.EstimatedLimit())
 	})
 
@@ -39,7 +39,7 @@ func TestAIMDLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewAIMDLimit(10, 0.9)
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(1))
+		l.OnSample(measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(-1, 1))
 		asrt.Equal(9, l.EstimatedLimit())
 	})
 

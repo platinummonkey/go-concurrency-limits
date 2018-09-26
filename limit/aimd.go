@@ -40,8 +40,8 @@ func (l *AIMDLimit) EstimatedLimit() int {
 	return l.limit
 }
 
-// Update the concurrency limit using a new rtt sample.
-func (l *AIMDLimit) Update(sample core.SampleWindow) {
+// OnSample the concurrency limit using a new rtt sample.
+func (l *AIMDLimit) OnSample(sample core.SampleWindow) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	if sample.DidDrop() {

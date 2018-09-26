@@ -111,8 +111,8 @@ func (l *GradientLimit) RTTNoLoad() int64 {
 	return int64(l.rttNoLoadMeasurement.Get())
 }
 
-// Update the concurrency limit using a new rtt sample.
-func (l *GradientLimit) Update(sample core.SampleWindow) {
+// OnSample the concurrency limit using a new rtt sample.
+func (l *GradientLimit) OnSample(sample core.SampleWindow) {
 	if sample.CandidateRTTNanoseconds() <= 0 {
 		panic(fmt.Sprintf("rtt must be >0 but got %d", sample.CandidateRTTNanoseconds()))
 	}

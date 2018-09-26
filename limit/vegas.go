@@ -163,8 +163,8 @@ func (l *VegasLimit) EstimatedLimit() int {
 	return int(l.estimatedLimit)
 }
 
-// Update the concurrency limit using a new rtt sample.
-func (l *VegasLimit) Update(sample core.SampleWindow) {
+// OnSample the concurrency limit using a new rtt sample.
+func (l *VegasLimit) OnSample(sample core.SampleWindow) {
 	rtt := sample.CandidateRTTNanoseconds()
 	if rtt <= 0 {
 		panic(fmt.Sprintf("rtt must be > 0, got %d", rtt))
