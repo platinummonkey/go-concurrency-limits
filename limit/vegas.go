@@ -173,17 +173,14 @@ func (l *VegasLimit) NotifyOnChange(consumer core.LimitChangeListener) {
 }
 
 // notifyListeners will call the callbacks on limit changes
-func (l *VegasLimit) notifyListeners(newLimit int) {
+func (l *VegasLimit) notifyListeners(newLimit float64) {
 	for _, listener := range l.listeners {
-		listener(newLimit)
+		listener(int(newLimit))
 	}
 }
 
 // OnSample the concurrency limit using a new rtt sample.
 func (l *VegasLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop bool) {
-	if rtt <= 0 {
-		panic(fmt.Sprintf("rtt must be > 0, got %d", rtt))
-	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -246,6 +243,7 @@ func (l *VegasLimit) updateEstimatedLimit(startTime int64, rtt int64, inFlight i
 	}
 
 	l.estimatedLimit = newLimit
+	l.notifyListeners(l.estimatedLimit)
 }
 
 // RTTNoLoad returns the current RTT No Load value.
