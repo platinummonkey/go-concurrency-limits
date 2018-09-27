@@ -19,6 +19,7 @@ type WindowedLimit struct {
 
 	delegate core.Limit
 	sample *measurements.ImmutableSampleWindow
+	listeners []core.LimitChangeListener
 
 	mu sync.RWMutex
 }
@@ -76,6 +77,7 @@ func NewWindowedLimit(
 		minRTTThreshold: minRTTThreshold,
 		delegate: delegate,
 		sample: measurements.NewDefaultImmutableSampleWindow(),
+		listeners: make([]core.LimitChangeListener, 0),
 	}, nil
 
 }
@@ -87,39 +89,45 @@ func (l *WindowedLimit) EstimatedLimit() int {
 	return l.delegate.EstimatedLimit()
 }
 
-// @sample Data from the last sampling window such as RTT.
-func (l *WindowedLimit) OnSample(sample core.SampleWindow) {
+// NotifyOnChange will register a callback to receive notification whenever the limit is updated to a new value.
+func (l *WindowedLimit) NotifyOnChange(consumer core.LimitChangeListener) {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-	s := sample.(*measurements.ImmutableSampleWindow)
-	endTime := s.StartTimeNanoseconds() + s.CandidateRTTNanoseconds()
-	if s.CandidateRTTNanoseconds() < l.minRTTThreshold {
-		return
-	}
+	l.listeners = append(l.listeners, consumer)
+	l.mu.Unlock()
+}
 
-	if s.DidDrop() {
-		l.sample = l.sample.AddDroppedSample(-1, s.MaxInFlight())
-	} else {
-		l.sample = l.sample.AddSample(-1, s.CandidateRTTNanoseconds(), s.MaxInFlight())
-	}
-
-	if endTime > l.nextUpdateTime && l.isWindowReady(sample) {
-		current := l.sample
-		l.sample = measurements.NewDefaultImmutableSampleWindow()
-		l.nextUpdateTime = endTime + minInt64(maxInt64(current.CandidateRTTNanoseconds() * 2, l.minWindowTime), l.maxWindowTime)
-		l.delegate.OnSample(measurements.NewImmutableSampleWindow(
-			sample.StartTimeNanoseconds(),
-			current.AverageRTTNanoseconds(),
-			0,
-			current.MaxInFlight(),
-			current.SampleCount(),
-			current.DidDrop(),
-		))
+// notifyListeners will call the callbacks on limit changes
+func (l *WindowedLimit) notifyListeners(newLimit int) {
+	for _, listener := range l.listeners {
+		listener(newLimit)
 	}
 }
 
-func (l *WindowedLimit) isWindowReady(sample core.SampleWindow) bool {
-	return sample.CandidateRTTNanoseconds() < int64(math.MaxInt64) && int32(sample.SampleCount()) > l.windowSize
+// OnSample the concurrency limit using a new rtt sample.
+func (l *WindowedLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	endTime := startTime + rtt
+	if rtt < l.minRTTThreshold {
+		return
+	}
+
+	if didDrop {
+		l.sample = l.sample.AddDroppedSample(-1, inFlight)
+	} else {
+		l.sample = l.sample.AddSample(-1, rtt, inFlight)
+	}
+
+	if endTime > l.nextUpdateTime && l.isWindowReady(rtt, inFlight) {
+		current := l.sample
+		l.sample = measurements.NewDefaultImmutableSampleWindow()
+		l.nextUpdateTime = endTime + minInt64(maxInt64(current.CandidateRTTNanoseconds() * 2, l.minWindowTime), l.maxWindowTime)
+		l.delegate.OnSample(startTime, current.AverageRTTNanoseconds(), current.MaxInFlight(), didDrop)
+	}
+}
+
+func (l *WindowedLimit) isWindowReady(rtt int64, inFlight int) bool {
+	return rtt < int64(math.MaxInt64) && int32(inFlight) > l.windowSize
 }
 
 func minInt64(a, b int64) int64 {
