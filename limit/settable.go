@@ -2,7 +2,7 @@ package limit
 
 import (
 	"fmt"
-	"sync/atomic"
+	"sync"
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
 )
@@ -10,32 +10,56 @@ import (
 // SettableLimit is a fixed limit that can be changed.
 // Note: to be used mostly for testing where the limit can be manually adjusted.
 type SettableLimit struct {
-	limit *int32
+	limit int32
+
+	listeners []core.LimitChangeListener
+	mu        sync.RWMutex
 }
 
 // NewSettableLimit will create a new SettableLimit.
 func NewSettableLimit(limit int) *SettableLimit {
-	l := int32(limit)
 	return &SettableLimit{
-		limit: &l,
+		limit:     int32(limit),
+		listeners: make([]core.LimitChangeListener, 0),
 	}
 }
 
 // EstimatedLimit will return the estimated limit.
 func (l *SettableLimit) EstimatedLimit() int {
-	return int(atomic.LoadInt32(l.limit))
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return int(l.limit)
 }
 
-// Update will update the limit with the given sample.
-func (l *SettableLimit) Update(sample core.SampleWindow) {
+// NotifyOnChange will register a callback to receive notification whenever the limit is updated to a new value.
+func (l *SettableLimit) NotifyOnChange(consumer core.LimitChangeListener) {
+	l.mu.Lock()
+	l.listeners = append(l.listeners, consumer)
+	l.mu.Unlock()
+}
+
+// notifyListeners will call the callbacks on limit changes
+func (l *SettableLimit) notifyListeners(newLimit int) {
+	for _, listener := range l.listeners {
+		listener(newLimit)
+	}
+}
+
+// OnSample will update the limit with the given sample.
+func (l *SettableLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop bool) {
 	// noop for SettableLimit
 }
 
 // SetLimit will update the current limit.
 func (l *SettableLimit) SetLimit(limit int) {
-	atomic.StoreInt32(l.limit, int32(limit))
+	l.mu.Lock()
+	l.limit = int32(limit)
+	l.notifyListeners(limit)
+	l.mu.Unlock()
 }
 
-func (l SettableLimit) String() string {
-	return fmt.Sprintf("SettableLimit{limit=%d}", atomic.LoadInt32(l.limit))
+func (l *SettableLimit) String() string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return fmt.Sprintf("SettableLimit{limit=%d}", l.limit)
 }

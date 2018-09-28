@@ -32,9 +32,10 @@ type VegasLimit struct {
 	probeMultipler    int
 	probeCountdown    int
 
-	registry core.MetricRegistry
-	logger   Logger
-	mu       sync.RWMutex
+	listeners []core.LimitChangeListener
+	registry  core.MetricRegistry
+	logger    Logger
+	mu        sync.RWMutex
 }
 
 // NewDefaultVegasLimit returns a new default VegasLimit.
@@ -142,6 +143,7 @@ func NewVegasLimitWithRegistry(
 		probeMultipler:    probeMultiplier,
 		probeCountdown:    nextVegasProbeCountdown(probeMultiplier, float64(initialLimit)),
 		rttSampleListener: registry.RegisterDistribution(core.MetricMinRTT),
+		listeners:         make([]core.LimitChangeListener, 0),
 		registry:          registry,
 		logger:            logger,
 	}
@@ -163,12 +165,22 @@ func (l *VegasLimit) EstimatedLimit() int {
 	return int(l.estimatedLimit)
 }
 
-// Update the concurrency limit using a new rtt sample.
-func (l *VegasLimit) Update(sample core.SampleWindow) {
-	rtt := sample.CandidateRTTNanoseconds()
-	if rtt <= 0 {
-		panic(fmt.Sprintf("rtt must be > 0, got %d", rtt))
+// NotifyOnChange will register a callback to receive notification whenever the limit is updated to a new value.
+func (l *VegasLimit) NotifyOnChange(consumer core.LimitChangeListener) {
+	l.mu.Lock()
+	l.listeners = append(l.listeners, consumer)
+	l.mu.Unlock()
+}
+
+// notifyListeners will call the callbacks on limit changes
+func (l *VegasLimit) notifyListeners(newLimit float64) {
+	for _, listener := range l.listeners {
+		listener(int(newLimit))
 	}
+}
+
+// OnSample the concurrency limit using a new rtt sample.
+func (l *VegasLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -189,17 +201,17 @@ func (l *VegasLimit) Update(sample core.SampleWindow) {
 	}
 
 	l.rttSampleListener.AddSample(float64(l.rttNoLoad))
-	l.updateEstimatedLimit(sample, rtt)
+	l.updateEstimatedLimit(startTime, rtt, inFlight, didDrop)
 }
 
-func (l *VegasLimit) updateEstimatedLimit(sample core.SampleWindow, rtt int64) {
+func (l *VegasLimit) updateEstimatedLimit(startTime int64, rtt int64, inFlight int, didDrop bool) {
 	queueSize := int(math.Ceil(l.estimatedLimit * (1 - float64(l.rttNoLoad)/float64(rtt))))
 
 	var newLimit float64
 	// Treat any drop (i.e timeout) as needing to reduce the limit
-	if sample.DidDrop() {
+	if didDrop {
 		newLimit = l.decreaseFunc(l.estimatedLimit)
-	} else if float64(sample.MaxInFlight())*2 < l.estimatedLimit {
+	} else if float64(inFlight)*2 < l.estimatedLimit {
 		// Prevent upward drift if not close to the limit
 		return
 	} else {
@@ -231,6 +243,7 @@ func (l *VegasLimit) updateEstimatedLimit(sample core.SampleWindow, rtt int64) {
 	}
 
 	l.estimatedLimit = newLimit
+	l.notifyListeners(l.estimatedLimit)
 }
 
 // RTTNoLoad returns the current RTT No Load value.

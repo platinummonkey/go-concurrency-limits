@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 func TestFixedLimit(t *testing.T) {
@@ -15,13 +13,13 @@ func TestFixedLimit(t *testing.T) {
 	l := NewFixedLimit(10)
 	asrt.Equal(10, l.EstimatedLimit())
 
-	l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
+	l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 10, false)
 	asrt.Equal(10, l.EstimatedLimit())
 
-	l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 100))
+	l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 100, false)
 	asrt.Equal(10, l.EstimatedLimit())
 
-	l.Update(measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(100))
+	l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 100, true)
 	asrt.Equal(10, l.EstimatedLimit())
 
 	asrt.Equal("FixedLimit{limit=10}", l.String())

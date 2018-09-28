@@ -15,10 +15,15 @@ type MeasurementInterface interface {
 
 	// Reset the internal state as if no samples were ever added.
 	Reset()
+
+	// OnSample will update the value given an operation function
+	Update(operation func(value float64) float64)
 }
 
 // SampleWindow represents the details of the current sample window
 type SampleWindow interface {
+	// StartTimeNanoseoncds returns the epoch start time in nanoseconds.
+	StartTimeNanoseconds() int64
 	// CandidateRTTNanoseconds returns the candidate RTT in the sample window. This is traditionally the minimum rtt.
 	CandidateRTTNanoseconds() int64
 	// AverageRTTNanoseconds returns the average RTT in the sample window.  Excludes timeouts and dropped rtt.
@@ -31,13 +36,24 @@ type SampleWindow interface {
 	DidDrop() bool
 }
 
+// LimitChangeListener is a callback method to receive a notification whenever the limit is updated to a new value.
+type LimitChangeListener func(limit int)
+
 // Limit is a Contract for an algorithm that calculates a concurrency limit based on rtt measurements.
 type Limit interface {
 	// EstimatedLimit returns the current estimated limit.
 	EstimatedLimit() int
-	// Update the concurrency limit using a new rtt sample.
-	// @sample Data from the last sampling window such as RTT.
-	Update(sample SampleWindow)
+
+	// NotifyOnChange will register a callback to receive notification whenever the limit is updated to a new value.
+	// @consumer the callback
+	NotifyOnChange(consumer LimitChangeListener)
+
+	// OnSample the concurrency limit using a new rtt sample.
+	// @startTime in epoch nanoseconds
+	// @rtt round trip time of sample
+	// @inFlight in flight observed count during the sample
+	// @didDrop true if there was a timeout
+	OnSample(startTime int64, rtt int64, inFlight int, didDrop bool)
 }
 
 // Listener implements token listener for callback to the limiter when and how it should be released.

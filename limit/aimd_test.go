@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 func TestAIMDLimit(t *testing.T) {
@@ -31,7 +29,7 @@ func TestAIMDLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewAIMDLimit(10, 0.9)
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 1).Nanoseconds(), 10))
+		l.OnSample(-1, (time.Millisecond * 1).Nanoseconds(), 10, false)
 		asrt.Equal(11, l.EstimatedLimit())
 	})
 
@@ -39,7 +37,7 @@ func TestAIMDLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewAIMDLimit(10, 0.9)
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(1))
+		l.OnSample(-1, 1, 1, true)
 		asrt.Equal(9, l.EstimatedLimit())
 	})
 

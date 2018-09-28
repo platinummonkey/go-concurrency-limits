@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 func TestNoopLimitLogger(t *testing.T) {
@@ -34,8 +32,7 @@ func TestTracedLimit(t *testing.T) {
 
 	asrt.Equal(10, l.EstimatedLimit())
 
-	m := measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(1)
-	l.Update(m)
+	l.OnSample(0, 0, 1, true)
 	asrt.Equal(10, l.EstimatedLimit())
 
 	asrt.Equal("TracedLimit{limit=SettableLimit{limit=10}, logger=NoopLimitLogger{}}", l.String())

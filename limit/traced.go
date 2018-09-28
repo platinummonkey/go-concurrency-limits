@@ -68,11 +68,15 @@ func (l *TracedLimit) EstimatedLimit() int {
 	return estimatedLimit
 }
 
-// Update will log and deleate the update of the sample.
-func (l *TracedLimit) Update(sample core.SampleWindow) {
-	l.logger.Debugf("sampleCount=%d, maxInFlight=%d, minRtt=%d ms",
-		sample.SampleCount(), sample.MaxInFlight(), sample.CandidateRTTNanoseconds()/1e6)
-	l.limit.Update(sample)
+// NotifyOnChange will register a callback to receive notification whenever the limit is updated to a new value.
+func (l *TracedLimit) NotifyOnChange(consumer core.LimitChangeListener) {
+	l.limit.NotifyOnChange(consumer)
+}
+
+// OnSample will log and deleate the update of the sample.
+func (l *TracedLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop bool) {
+	l.logger.Debugf("startTime=%d, rtt=%d ms, inFlight=%d, didDrop=%t", startTime, rtt/1e6, inFlight, didDrop)
+	l.limit.OnSample(startTime, rtt, inFlight, didDrop)
 }
 
 func (l TracedLimit) String() string {

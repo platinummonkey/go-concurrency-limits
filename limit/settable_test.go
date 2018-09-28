@@ -4,8 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 func TestSettableLimit(t *testing.T) {
@@ -18,8 +16,7 @@ func TestSettableLimit(t *testing.T) {
 	asrt.Equal(5, l.EstimatedLimit())
 
 	// should be a noop
-	m := measurements.NewDefaultImmutableSampleWindow().AddDroppedSample(1)
-	l.Update(m)
+	l.OnSample(0, 10, 1, true)
 	asrt.Equal(5, l.EstimatedLimit())
 
 	asrt.Equal("SettableLimit{limit=5}", l.String())

@@ -28,6 +28,7 @@ type GradientLimit struct {
 	probeInterval              int
 	resetRTTCounter            int
 	rttNoLoadMeasurement       core.MeasurementInterface
+	listeners                  []core.LimitChangeListener
 	logger                     Logger
 	registry                   core.MetricRegistry
 
@@ -88,6 +89,7 @@ func NewGradientLimitWithRegistry(
 		probeInterval:        probeInterval,
 		resetRTTCounter:      nextProbeCountdown(probeInterval),
 		rttNoLoadMeasurement: &measurements.MinimumMeasurement{},
+		listeners:            make([]core.LimitChangeListener, 0),
 		logger:               logger,
 		registry:             registry,
 
@@ -111,16 +113,25 @@ func (l *GradientLimit) RTTNoLoad() int64 {
 	return int64(l.rttNoLoadMeasurement.Get())
 }
 
-// Update the concurrency limit using a new rtt sample.
-func (l *GradientLimit) Update(sample core.SampleWindow) {
-	if sample.CandidateRTTNanoseconds() <= 0 {
-		panic(fmt.Sprintf("rtt must be >0 but got %d", sample.CandidateRTTNanoseconds()))
-	}
+// NotifyOnChange will register a callback to receive notification whenever the limit is updated to a new value.
+func (l *GradientLimit) NotifyOnChange(consumer core.LimitChangeListener) {
+	l.mu.Lock()
+	l.listeners = append(l.listeners, consumer)
+	l.mu.Unlock()
+}
 
+// notifyListeners will call the callbacks on limit changes
+func (l *GradientLimit) notifyListeners(newLimit float64) {
+	for _, listener := range l.listeners {
+		listener(int(newLimit))
+	}
+}
+
+// OnSample the concurrency limit using a new rtt sample.
+func (l *GradientLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	rtt := sample.AverageRTTNanoseconds()
 	l.minWindowRTTSampleListener.AddSample(float64(rtt))
 
 	queueSize := l.queueSizeFunc(int(l.estimatedLimit))
@@ -137,6 +148,7 @@ func (l *GradientLimit) Update(sample core.SampleWindow) {
 			l.estimatedLimit = math.Max(float64(l.minLimit), float64(queueSize))
 			l.rttNoLoadMeasurement.Reset()
 			l.logger.Debugf("probe minRTT limit=%d", int(l.estimatedLimit))
+			l.notifyListeners(l.estimatedLimit)
 			return
 		}
 	}
@@ -145,17 +157,17 @@ func (l *GradientLimit) Update(sample core.SampleWindow) {
 	rttNoLoad := int64(rttNoLoadFloat)
 	l.minRTTSampleListener.AddSample(float64(rttNoLoad)) // yes we purposely convert back and lose precision
 
-	// Rtt could be higher than rtt_noload because of smoothing rtt noload updates
+	// rtt could be higher than rtt_noload because of smoothing rtt noload updates
 	// so set to 1.0 to indicate no queuing.  Otherwise calculate the slope and don't
-	// allow it to be reduced by more than half to avoid aggressive load-sheding due to
+	// allow it to be reduced by more than half to avoid aggressive load-shedding due to
 	// outliers.
 	gradient := math.Max(0.5, math.Min(1.0, l.rttTolerance*float64(rttNoLoad)/float64(rtt)))
 
 	var newLimit float64
 	// Reduce the limit aggressively if there was a drop
-	if sample.DidDrop() {
+	if didDrop {
 		newLimit = l.estimatedLimit / 2
-	} else if float64(sample.MaxInFlight()) < l.estimatedLimit/2 {
+	} else if float64(inFlight) < l.estimatedLimit/2 {
 		// Don't grow the limit if we are app limited
 		return
 	} else {
@@ -175,6 +187,7 @@ func (l *GradientLimit) Update(sample core.SampleWindow) {
 	}
 
 	l.estimatedLimit = newLimit
+	l.notifyListeners(l.estimatedLimit)
 }
 
 func (l *GradientLimit) String() string {

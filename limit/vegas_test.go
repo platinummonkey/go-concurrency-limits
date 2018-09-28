@@ -8,7 +8,6 @@ import (
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
 	"github.com/platinummonkey/go-concurrency-limits/limit/functions"
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 func createVegasLimit() *VegasLimit {
@@ -53,9 +52,9 @@ func TestVegasLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := createVegasLimit()
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
+		l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 10, false)
 		asrt.Equal(10, l.EstimatedLimit())
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 11))
+		l.OnSample(10, (time.Millisecond * 10).Nanoseconds(), 11, false)
 		asrt.Equal(16, l.EstimatedLimit())
 	})
 
@@ -63,9 +62,9 @@ func TestVegasLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := createVegasLimit()
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
+		l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 10, false)
 		asrt.Equal(10, l.EstimatedLimit())
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 50).Nanoseconds(), 11))
+		l.OnSample(10, (time.Millisecond * 50).Nanoseconds(), 11, false)
 		asrt.Equal(9, l.EstimatedLimit())
 	})
 
@@ -73,9 +72,9 @@ func TestVegasLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := createVegasLimit()
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 10))
+		l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 10, false)
 		asrt.Equal(10, l.EstimatedLimit())
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 14).Nanoseconds(), 14))
+		l.OnSample(10, (time.Millisecond * 14).Nanoseconds(), 14, false)
 		asrt.Equal(10, l.EstimatedLimit())
 	})
 
@@ -98,15 +97,15 @@ func TestVegasLimit(t *testing.T) {
 			core.EmptyMetricRegistryInstance)
 
 		// Pick up first min-rtt
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 100))
+		l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 100, false)
 		asrt.Equal(100, l.EstimatedLimit())
 
 		// First decrease
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 20).Nanoseconds(), 100))
+		l.OnSample(10, (time.Millisecond * 20).Nanoseconds(), 100, false)
 		asrt.Equal(75, l.EstimatedLimit())
 
 		// Second decrease
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 20).Nanoseconds(), 100))
+		l.OnSample(20, (time.Millisecond * 20).Nanoseconds(), 100, false)
 		asrt.Equal(56, l.EstimatedLimit())
 	})
 
@@ -129,15 +128,15 @@ func TestVegasLimit(t *testing.T) {
 			core.EmptyMetricRegistryInstance)
 
 		// Pick up first min-rtt
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 10).Nanoseconds(), 100))
+		l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 100, false)
 		asrt.Equal(100, l.EstimatedLimit())
 
 		// First decrease
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 20).Nanoseconds(), 100))
+		l.OnSample(10, (time.Millisecond * 20).Nanoseconds(), 100, false)
 		asrt.Equal(50, l.EstimatedLimit())
 
 		// Second decrease
-		l.Update(measurements.NewDefaultImmutableSampleWindow().AddSample((time.Millisecond * 20).Nanoseconds(), 100))
+		l.OnSample(20, (time.Millisecond * 20).Nanoseconds(), 100, false)
 		asrt.Equal(25, l.EstimatedLimit())
 	})
 }

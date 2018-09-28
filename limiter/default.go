@@ -42,9 +42,11 @@ func (l *DefaultListener) OnSuccess() {
 	if rtt < l.minRTTThreshold {
 		return
 	}
-	_, current := l.limiter.updateAndGetSample(func(window measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow {
-		return *(window.AddSample(rtt, int(l.currentMaxInFlight)))
-	})
+	_, current := l.limiter.updateAndGetSample(
+		func(window measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow {
+			return *(window.AddSample(-1, rtt, int(l.currentMaxInFlight)))
+		},
+	)
 
 	if endTime > l.nextUpdateTime {
 		// double check just to be sure
@@ -52,7 +54,14 @@ func (l *DefaultListener) OnSuccess() {
 		defer l.limiter.mu.Unlock()
 		if endTime > l.limiter.nextUpdateTime {
 			if l.limiter.isWindowReady(current) {
-				l.limiter.sample = measurements.NewImmutableSampleWindow(0, 0, 0, 0, false)
+				l.limiter.sample = measurements.NewImmutableSampleWindow(
+					-1,
+					0,
+					0,
+					0,
+					0,
+					false,
+				)
 				minWindowTime := current.CandidateRTTNanoseconds() * 2
 				if l.limiter.minWindowTime > minWindowTime {
 					minWindowTime = l.limiter.minWindowTime
@@ -62,7 +71,12 @@ func (l *DefaultListener) OnSuccess() {
 					minVal = minWindowTime
 				}
 				l.limiter.nextUpdateTime = endTime + minVal
-				l.limiter.limit.Update(&current)
+				l.limiter.limit.OnSample(
+					0,
+					current.CandidateRTTNanoseconds(),
+					current.MaxInFlight(),
+					current.DidDrop(),
+				)
 				l.limiter.strategy.SetLimit(l.limiter.limit.EstimatedLimit())
 			}
 		}
@@ -84,7 +98,7 @@ func (l *DefaultListener) OnDropped() {
 	atomic.AddInt64(l.inFlight, -1)
 	l.token.Release()
 	l.limiter.updateAndGetSample(func(window measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow {
-		return *(window.AddDroppedSample(int(l.currentMaxInFlight)))
+		return *(window.AddDroppedSample(-1, int(l.currentMaxInFlight)))
 	})
 }
 
