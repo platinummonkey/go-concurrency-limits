@@ -24,4 +24,7 @@ func TestExponentialAverageMeasurement(t *testing.T) {
 		return value - 1
 	})
 	asrt.InDelta(float64(15.19), m.Get(), 0.01)
+
+	m.Reset()
+	asrt.Equal(float64(0), m.Get())
 }

@@ -111,6 +111,6 @@ func (s *ImmutableSampleWindow) DidDrop() bool {
 
 func (s *ImmutableSampleWindow) String() string {
 	return fmt.Sprintf(
-		"ImmutableSampleWindow{minRTT=%d, averageRTT=%d, maxInFlight=%d, sampleCount=%d, didDrop=%t",
+		"ImmutableSampleWindow{minRTT=%d, averageRTT=%d, maxInFlight=%d, sampleCount=%d, didDrop=%t}",
 		s.minRTT, s.AverageRTTNanoseconds(), s.maxInFlight, s.sampleCount, s.didDrop)
 }
