@@ -14,10 +14,7 @@ func TestGradient2Limit(t *testing.T) {
 	t.Run("Default", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		l := NewDefaultGradient2Limit(
-			NoopLimitLogger{},
-			core.EmptyMetricRegistryInstance,
-		)
+		l := NewDefaultGradient2Limit(nil, nil)
 		asrt.NotNil(l)
 
 		asrt.Equal(4, l.EstimatedLimit())
