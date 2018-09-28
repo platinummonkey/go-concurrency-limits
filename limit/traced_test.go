@@ -29,6 +29,8 @@ func TestTracedLimit(t *testing.T) {
 	asrt := assert.New(t)
 	delegate := NewSettableLimit(10)
 	l := NewTracedLimit(delegate, NoopLimitLogger{})
+	listener := testNotifyListener{}
+	l.NotifyOnChange(listener.updater())
 
 	asrt.Equal(10, l.EstimatedLimit())
 

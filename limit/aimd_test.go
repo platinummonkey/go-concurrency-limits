@@ -29,8 +29,11 @@ func TestAIMDLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewAIMDLimit(10, 0.9)
+		listener := testNotifyListener{changes: make([]int, 0)}
+		l.NotifyOnChange(listener.updater())
 		l.OnSample(-1, (time.Millisecond * 1).Nanoseconds(), 10, false)
 		asrt.Equal(11, l.EstimatedLimit())
+		asrt.Equal(11, listener.changes[0])
 	})
 
 	t.Run("DecreaseOnDrops", func(t2 *testing.T) {

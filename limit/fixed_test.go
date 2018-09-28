@@ -22,5 +22,9 @@ func TestFixedLimit(t *testing.T) {
 	l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 100, true)
 	asrt.Equal(10, l.EstimatedLimit())
 
+	// NOOP
+	listener := testNotifyListener{}
+	l.NotifyOnChange(listener.updater())
+
 	asrt.Equal("FixedLimit{limit=10}", l.String())
 }

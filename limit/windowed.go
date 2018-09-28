@@ -94,6 +94,7 @@ func (l *WindowedLimit) EstimatedLimit() int {
 func (l *WindowedLimit) NotifyOnChange(consumer core.LimitChangeListener) {
 	l.mu.Lock()
 	l.listeners = append(l.listeners, consumer)
+	l.delegate.NotifyOnChange(consumer)
 	l.mu.Unlock()
 }
 

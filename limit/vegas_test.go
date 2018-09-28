@@ -52,10 +52,13 @@ func TestVegasLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := createVegasLimit()
+		listener := testNotifyListener{}
+		l.NotifyOnChange(listener.updater())
 		l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 10, false)
 		asrt.Equal(10, l.EstimatedLimit())
 		l.OnSample(10, (time.Millisecond * 10).Nanoseconds(), 11, false)
 		asrt.Equal(16, l.EstimatedLimit())
+		asrt.Equal(16, listener.changes[0])
 	})
 
 	t.Run("DecreaseLimit", func(t2 *testing.T) {

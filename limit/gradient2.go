@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
-	
+
 	"github.com/platinummonkey/go-concurrency-limits/core"
 	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
