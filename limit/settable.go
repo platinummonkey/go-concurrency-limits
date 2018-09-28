@@ -2,8 +2,9 @@ package limit
 
 import (
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/core"
 	"sync"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
 // SettableLimit is a fixed limit that can be changed.
@@ -12,13 +13,13 @@ type SettableLimit struct {
 	limit int32
 
 	listeners []core.LimitChangeListener
-	mu sync.RWMutex
+	mu        sync.RWMutex
 }
 
 // NewSettableLimit will create a new SettableLimit.
 func NewSettableLimit(limit int) *SettableLimit {
 	return &SettableLimit{
-		limit: int32(limit),
+		limit:     int32(limit),
 		listeners: make([]core.LimitChangeListener, 0),
 	}
 }

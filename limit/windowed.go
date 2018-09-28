@@ -2,48 +2,49 @@ package limit
 
 import (
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/core"
-	"github.com/platinummonkey/go-concurrency-limits/measurements"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
+	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 // WindowedLimit implements a windowed limit
 type WindowedLimit struct {
-	minWindowTime int64 // Minimum window duration for sampling a new minRtt
-	maxWindowTime int64 // Maximum window duration for sampling a new minRtt
-	nextUpdateTime int64 // End time for the sampling window at which point the limit should be updated
-	windowSize int32 // Minimum sampling window size for finding a new minimum rtt
+	minWindowTime   int64 // Minimum window duration for sampling a new minRtt
+	maxWindowTime   int64 // Maximum window duration for sampling a new minRtt
+	nextUpdateTime  int64 // End time for the sampling window at which point the limit should be updated
+	windowSize      int32 // Minimum sampling window size for finding a new minimum rtt
 	minRTTThreshold int64
 
-	delegate core.Limit
-	sample *measurements.ImmutableSampleWindow
+	delegate  core.Limit
+	sample    *measurements.ImmutableSampleWindow
 	listeners []core.LimitChangeListener
 
 	mu sync.RWMutex
 }
 
 const (
-	defaultWindowedMinWindowTime = 1e9 // 1 second
-	defaultWindowedMaxWindowTime = 1e9 // 1 second
+	defaultWindowedMinWindowTime   = 1e9 // 1 second
+	defaultWindowedMaxWindowTime   = 1e9 // 1 second
 	defaultWindowedMinRTTThreshold = 1e8 // 100 microseconds
-	defaultWindowedWindowSize = 10
+	defaultWindowedWindowSize      = 10
 )
 
 // NewDefaultWindowedLimit will create a new default WindowedLimit
 func NewDefaultWindowedLimit(
 	delegate core.Limit,
-) (*WindowedLimit, error) {
-	return NewWindowedLimit(
+) *WindowedLimit {
+	l, _ := NewWindowedLimit(
 		defaultWindowedMinWindowTime,
 		defaultWindowedMaxWindowTime,
 		defaultWindowedWindowSize,
 		defaultWindowedMinRTTThreshold,
 		delegate,
 	)
+	return l
 }
-
 
 // NewWindowedLimit will create a new WindowedLimit
 func NewWindowedLimit(
@@ -53,11 +54,11 @@ func NewWindowedLimit(
 	minRTTThreshold int64,
 	delegate core.Limit,
 ) (*WindowedLimit, error) {
-	if minWindowTime < (time.Duration(100)*time.Millisecond).Nanoseconds() {
+	if minWindowTime < (time.Duration(100) * time.Millisecond).Nanoseconds() {
 		return nil, fmt.Errorf("minWindowTime must be >= 100 ms")
 	}
 
-	if maxWindowTime < (time.Duration(100)*time.Millisecond).Nanoseconds() {
+	if maxWindowTime < (time.Duration(100) * time.Millisecond).Nanoseconds() {
 		return nil, fmt.Errorf("maxWindowTime must be >= 100 ms")
 	}
 
@@ -70,14 +71,14 @@ func NewWindowedLimit(
 	}
 
 	return &WindowedLimit{
-		minWindowTime: minWindowTime,
-		maxWindowTime: maxWindowTime,
-		nextUpdateTime: 0,
-		windowSize: windowSize,
+		minWindowTime:   minWindowTime,
+		maxWindowTime:   maxWindowTime,
+		nextUpdateTime:  0,
+		windowSize:      windowSize,
 		minRTTThreshold: minRTTThreshold,
-		delegate: delegate,
-		sample: measurements.NewDefaultImmutableSampleWindow(),
-		listeners: make([]core.LimitChangeListener, 0),
+		delegate:        delegate,
+		sample:          measurements.NewDefaultImmutableSampleWindow(),
+		listeners:       make([]core.LimitChangeListener, 0),
 	}, nil
 
 }
@@ -121,9 +122,16 @@ func (l *WindowedLimit) OnSample(startTime int64, rtt int64, inFlight int, didDr
 	if endTime > l.nextUpdateTime && l.isWindowReady(rtt, inFlight) {
 		current := l.sample
 		l.sample = measurements.NewDefaultImmutableSampleWindow()
-		l.nextUpdateTime = endTime + minInt64(maxInt64(current.CandidateRTTNanoseconds() * 2, l.minWindowTime), l.maxWindowTime)
+		l.nextUpdateTime = endTime + minInt64(maxInt64(current.CandidateRTTNanoseconds()*2, l.minWindowTime), l.maxWindowTime)
 		l.delegate.OnSample(startTime, current.AverageRTTNanoseconds(), current.MaxInFlight(), didDrop)
 	}
+}
+
+func (l *WindowedLimit) String() string {
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	return fmt.Sprintf("WindowedLimit{minWindowTime=%d, maxWindowTime=%d, minRTTThreshold=%d, windowSize=%d,"+
+		" delegate=%v", l.minWindowTime, l.maxWindowTime, l.minRTTThreshold, l.windowSize, l.delegate)
 }
 
 func (l *WindowedLimit) isWindowReady(rtt int64, inFlight int) bool {
@@ -143,4 +151,3 @@ func maxInt64(a, b int64) int64 {
 	}
 	return b
 }
-

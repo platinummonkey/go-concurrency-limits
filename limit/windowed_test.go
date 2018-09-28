@@ -2,10 +2,76 @@ package limit
 
 import (
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestWindowedLimit(t *testing.T) {
 	t.Parallel()
 
-	// TODO: finish these tests
+	t.Run("DefaultWindowedLimit", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		delegate := NewSettableLimit(10)
+		l := NewDefaultWindowedLimit(delegate)
+		asrt.Equal(10, l.EstimatedLimit())
+	})
+
+	t.Run("NewWindowedLimit", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		delegate := NewSettableLimit(10)
+		minWindowTime := (time.Millisecond * 100).Nanoseconds()
+		l, err := NewWindowedLimit(minWindowTime, minWindowTime*2, 10, 10, delegate)
+		asrt.NoError(err)
+		asrt.NotNil(l)
+		asrt.Equal(10, l.EstimatedLimit())
+	})
+
+	t.Run("DecreaseOnDrops", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		delegate := NewDefaultAIMLimit()
+		minWindowTime := (time.Millisecond * 100).Nanoseconds()
+		l, err := NewWindowedLimit(minWindowTime, minWindowTime*2, 10, 10, delegate)
+		asrt.NoError(err)
+		asrt.NotNil(l)
+		asrt.Equal(10, l.EstimatedLimit())
+
+		l.OnSample(0, 10, 1, false)
+		asrt.Equal(10, l.EstimatedLimit())
+		for i := 0; i < 10; i++ {
+			l.OnSample(0, minWindowTime*1000, 15, true)
+		}
+		asrt.Equal(9, l.EstimatedLimit())
+	})
+
+	t.Run("IncreaseOnSuccess", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		delegate := NewDefaultAIMLimit()
+		minWindowTime := (time.Millisecond * 100).Nanoseconds()
+		l, err := NewWindowedLimit(minWindowTime, minWindowTime*2, 10, 10, delegate)
+		asrt.NoError(err)
+		asrt.NotNil(l)
+		asrt.Equal(10, l.EstimatedLimit())
+
+		for i := 0; i < 40; i++ {
+			l.OnSample(l.minWindowTime*int64(i*i), minWindowTime+10, 15, false)
+		}
+		asrt.Equal(16, l.EstimatedLimit())
+	})
+
+	t.Run("String", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		delegate := NewSettableLimit(10)
+		minWindowTime := (time.Millisecond * 100).Nanoseconds()
+		l, err := NewWindowedLimit(minWindowTime, minWindowTime*2, 10, 10, delegate)
+		asrt.NoError(err)
+		asrt.NotNil(l)
+		asrt.Equal("WindowedLimit{minWindowTime=100000000, maxWindowTime=200000000, minRTTThreshold=10, "+
+			"windowSize=10, delegate=SettableLimit{limit=10}", l.String())
+	})
 }

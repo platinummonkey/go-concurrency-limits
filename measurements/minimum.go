@@ -35,7 +35,7 @@ func (m *MinimumMeasurement) Reset() {
 	m.value = 0.0
 }
 
-// OnSample will update the value given an operation function
+// Update will update the value given an operation function
 func (m *MinimumMeasurement) Update(operation func(value float64) float64) {
 	m.mu.RLock()
 	current := m.value

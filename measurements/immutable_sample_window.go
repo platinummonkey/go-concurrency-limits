@@ -76,7 +76,7 @@ func (s *ImmutableSampleWindow) AddDroppedSample(startTime int64, maxInFlight in
 	return NewImmutableSampleWindow(startTime, s.minRTT, s.sum, maxInFlight, s.sampleCount, true)
 }
 
-// StartTimeNanoseoncds returns the epoch start time in nanoseconds.
+// StartTimeNanoseconds returns the epoch start time in nanoseconds.
 func (s *ImmutableSampleWindow) StartTimeNanoseconds() int64 {
 	return s.startTime
 }

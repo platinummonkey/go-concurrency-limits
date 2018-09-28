@@ -8,64 +8,60 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
-func TestGradientLimit(t *testing.T) {
+func TestGradient2Limit(t *testing.T) {
 	t.Parallel()
-	t.Run("nextProbeInterval", func(t2 *testing.T) {
-		t2.Parallel()
-		asrt := assert.New(t2)
-		asrt.Equal(LimitProbeDisabled, nextProbeCountdown(LimitProbeDisabled))
-		asrt.True(nextProbeCountdown(1) > 0)
-	})
 
 	t.Run("Default", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		l := NewGradientLimitWithRegistry(
-			0,
-			0,
-			0,
-			-1,
-			nil,
-			-1,
-			0,
+		l := NewDefaultGradient2Limit(
 			NoopLimitLogger{},
 			core.EmptyMetricRegistryInstance,
 		)
+		asrt.NotNil(l)
 
-		asrt.Equal(50, l.EstimatedLimit())
-		asrt.Equal(int64(0), l.RTTNoLoad())
-		asrt.Equal("GradientLimit{limit=50, rttNoLoad=0 ms}", l.String())
+		asrt.Equal(4, l.EstimatedLimit())
+		asrt.Equal("Gradient2Limit{limit=4}", l.String())
 	})
 
 	t.Run("OnSample", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		l := NewGradientLimitWithRegistry(
+		l, err := NewGradient2Limit(
+			50,
 			0,
 			0,
-			0,
-			-1,
 			nil,
 			-1,
-			0,
+			-1,
+			-1,
+			-1,
 			NoopLimitLogger{},
 			core.EmptyMetricRegistryInstance,
 		)
+		asrt.NoError(err)
+		asrt.NotNil(l)
+
 		// nothing should change
 		l.OnSample(0, 10, 1, false)
 		asrt.Equal(50, l.EstimatedLimit())
 
+		for i := 0; i < 59; i++ {
+			l.OnSample(int64(i), 100, 1, false)
+			asrt.Equal(50, l.EstimatedLimit())
+		}
+
 		// dropped samples cut off limit, smoothed down
-		l.OnSample(10, 1, 1, true)
-		asrt.Equal(45, l.EstimatedLimit())
+		l.OnSample(60, 100, 1, true)
+		asrt.Equal(4, l.EstimatedLimit())
 
-		// test new sample shouldn't grow with current conditions
+		// test new sample shouldn't grow too fast
 		l.OnSample(20, 10, 5, false)
-		asrt.Equal(45, l.EstimatedLimit())
+		asrt.Equal(6, l.EstimatedLimit())
 
-		// drain down pretty far
+		// drain down again
 		for i := 0; i < 100; i++ {
-			l.OnSample(int64(i*10+30), 0, 0, true)
+			l.OnSample(int64(i*10+30), 10, 1, true)
 		}
 		asrt.Equal(4, l.EstimatedLimit())
 
@@ -73,6 +69,6 @@ func TestGradientLimit(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			l.OnSample(int64(i*10+3030), 1, 5, false)
 		}
-		asrt.Equal(16, l.EstimatedLimit())
+		asrt.Equal(12, l.EstimatedLimit())
 	})
 }
