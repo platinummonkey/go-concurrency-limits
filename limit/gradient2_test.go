@@ -41,6 +41,8 @@ func TestGradient2Limit(t *testing.T) {
 		)
 		asrt.NoError(err)
 		asrt.NotNil(l)
+		listener := testNotifyListener{}
+		l.NotifyOnChange(listener.updater())
 
 		// nothing should change
 		l.OnSample(0, 10, 1, false)
@@ -54,6 +56,7 @@ func TestGradient2Limit(t *testing.T) {
 		// dropped samples cut off limit, smoothed down
 		l.OnSample(60, 100, 1, true)
 		asrt.Equal(4, l.EstimatedLimit())
+		asrt.Equal(4, listener.changes[0])
 
 		// test new sample shouldn't grow too fast
 		l.OnSample(20, 10, 5, false)

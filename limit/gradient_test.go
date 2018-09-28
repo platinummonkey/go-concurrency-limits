@@ -51,6 +51,8 @@ func TestGradientLimit(t *testing.T) {
 			NoopLimitLogger{},
 			core.EmptyMetricRegistryInstance,
 		)
+		listener := testNotifyListener{}
+		l.NotifyOnChange(listener.updater())
 		// nothing should change
 		l.OnSample(0, 10, 1, false)
 		asrt.Equal(50, l.EstimatedLimit())
@@ -58,6 +60,7 @@ func TestGradientLimit(t *testing.T) {
 		// dropped samples cut off limit, smoothed down
 		l.OnSample(10, 1, 1, true)
 		asrt.Equal(45, l.EstimatedLimit())
+		asrt.Equal(45, listener.changes[0])
 
 		// test new sample shouldn't grow with current conditions
 		l.OnSample(20, 10, 5, false)

@@ -57,10 +57,14 @@ func TestWindowedLimit(t *testing.T) {
 		asrt.NotNil(l)
 		asrt.Equal(10, l.EstimatedLimit())
 
+		listener := testNotifyListener{}
+		l.NotifyOnChange(listener.updater())
+
 		for i := 0; i < 40; i++ {
 			l.OnSample(l.minWindowTime*int64(i*i), minWindowTime+10, 15, false)
 		}
 		asrt.Equal(16, l.EstimatedLimit())
+		asrt.Equal([]int{11, 12, 13, 14, 15, 16}, listener.changes)
 	})
 
 	t.Run("String", func(t2 *testing.T) {
