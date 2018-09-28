@@ -22,4 +22,6 @@ func TestImmutableSampleWindow(t *testing.T) {
 		"ImmutableSampleWindow{minRTT=10, averageRTT=10, maxInFlight=5, sampleCount=1, didDrop=false}",
 		w2.String(),
 	)
+	w3 := w2.AddDroppedSample(-10, 500)
+	asrt.True(w3.DidDrop())
 }
