@@ -138,7 +138,7 @@ func TestLifoBlockingLimiter(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		delegateLimiter, _ := NewDefaultLimiter(
-			limit.NewFixedLimit(10),
+			limit.NewFixedLimit("test", 10, nil),
 			defaultMinWindowTime,
 			defaultMaxWindowTime,
 			defaultMinRTTThreshold,

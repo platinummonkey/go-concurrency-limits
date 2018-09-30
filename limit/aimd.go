@@ -14,11 +14,9 @@ type AIMDLimit struct {
 	limit        int
 	backOffRatio float64
 
-	listeners        []core.LimitChangeListener
-	registry         core.MetricRegistry
-	dropCounter      core.MetricSampleListener
-	rttListener      core.MetricSampleListener
-	inFlightListener core.MetricSampleListener
+	listeners     []core.LimitChangeListener
+	registry      core.MetricRegistry
+	commonSampler *core.CommonMetricSampler
 
 	mu sync.RWMutex
 }
@@ -27,8 +25,9 @@ type AIMDLimit struct {
 func NewDefaultAIMLimit(
 	name string,
 	registry core.MetricRegistry,
+	tags ...string,
 ) *AIMDLimit {
-	return NewAIMDLimit(name, 10, 0.9, registry)
+	return NewAIMDLimit(name, 10, 0.9, registry, tags...)
 }
 
 // NewAIMDLimit will create a new AIMDLimit.
@@ -37,26 +36,20 @@ func NewAIMDLimit(
 	initialLimit int,
 	backOffRatio float64,
 	registry core.MetricRegistry,
+	tags ...string,
 ) *AIMDLimit {
 	if registry == nil {
 		registry = core.EmptyMetricRegistryInstance
 	}
 
 	l := &AIMDLimit{
-		name:             name,
-		limit:            initialLimit,
-		backOffRatio:     backOffRatio,
-		listeners:        make([]core.LimitChangeListener, 0),
-		registry:         registry,
-		dropCounter:      registry.RegisterCount(core.PrefixMetricWithName(core.MetricDropped, name)),
-		rttListener:      registry.RegisterTiming(core.PrefixMetricWithName(core.MetricMinRTT, name)),
-		inFlightListener: registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricInFlight, name)),
+		name:         name,
+		limit:        initialLimit,
+		backOffRatio: backOffRatio,
+		listeners:    make([]core.LimitChangeListener, 0),
+		registry:     registry,
 	}
-
-	registry.RegisterGauge(
-		core.PrefixMetricWithName(core.MetricLimit, name),
-		core.NewIntMetricSupplierWrapper(l.EstimatedLimit),
-	)
+	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
 	return l
 }
 
@@ -86,11 +79,9 @@ func (l *AIMDLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop b
 	l.mu.Lock()
 	l.mu.Unlock()
 
-	l.rttListener.AddSample(float64(rtt))
-	l.inFlightListener.AddSample(float64(inFlight))
+	l.commonSampler.Sample(rtt, inFlight, didDrop)
 
 	if didDrop {
-		l.dropCounter.AddSample(1)
 		l.limit = int(math.Max(1, math.Min(float64(l.limit-1), float64(int(float64(l.limit)*l.backOffRatio)))))
 		l.notifyListeners(l.limit)
 	} else if inFlight >= l.limit {

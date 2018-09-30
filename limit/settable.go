@@ -12,16 +12,26 @@ import (
 type SettableLimit struct {
 	limit int32
 
-	listeners []core.LimitChangeListener
-	mu        sync.RWMutex
+	listeners     []core.LimitChangeListener
+	commonSampler *core.CommonMetricSampler
+	mu            sync.RWMutex
 }
 
 // NewSettableLimit will create a new SettableLimit.
-func NewSettableLimit(limit int) *SettableLimit {
-	return &SettableLimit{
+func NewSettableLimit(name string, limit int, registry core.MetricRegistry, tags ...string) *SettableLimit {
+	if limit < 0 {
+		limit = 10
+	}
+	if registry == nil {
+		registry = core.EmptyMetricRegistryInstance
+	}
+
+	l := &SettableLimit{
 		limit:     int32(limit),
 		listeners: make([]core.LimitChangeListener, 0),
 	}
+	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
+	return l
 }
 
 // EstimatedLimit will return the estimated limit.
@@ -47,7 +57,8 @@ func (l *SettableLimit) notifyListeners(newLimit int) {
 
 // OnSample will update the limit with the given sample.
 func (l *SettableLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop bool) {
-	// noop for SettableLimit
+	// noop for SettableLimit, just record metrics
+	l.commonSampler.Sample(rtt, inFlight, didDrop)
 }
 
 // SetLimit will update the current limit.

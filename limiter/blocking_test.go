@@ -34,7 +34,7 @@ func (l *testListener) OnDropped() {
 func TestBlockingLimiter(t *testing.T) {
 	t.Run("Unblocked", func(t2 *testing.T) {
 		asrt := assert.New(t2)
-		l := limit.NewSettableLimit(10)
+		l := limit.NewSettableLimit("test", 10, nil)
 		noopLogger := limit.NoopLimitLogger{}
 		defaultLimiter, err := NewDefaultLimiter(
 			l,
@@ -73,7 +73,7 @@ func TestBlockingLimiter(t *testing.T) {
 
 	t.Run("MultipleBlocked", func(t2 *testing.T) {
 		asrt := assert.New(t2)
-		l := limit.NewSettableLimit(1)
+		l := limit.NewSettableLimit("test", 1, nil)
 		noopLogger := limit.NoopLimitLogger{}
 		defaultLimiter, err := NewDefaultLimiter(
 			l,

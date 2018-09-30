@@ -24,6 +24,7 @@ type Gradient2Limit struct {
 	minLimit                int
 	queueSizeFunc           func(limit int) int
 	smoothing               float64
+	commonSampler           *core.CommonMetricSampler
 	longRTTSampleListener   core.MetricSampleListener
 	shortRTTSampleListener  core.MetricSampleListener
 	queueSizeSampleListener core.MetricSampleListener
@@ -38,10 +39,13 @@ type Gradient2Limit struct {
 
 // NewDefaultGradient2Limit create a default Gradient2Limit
 func NewDefaultGradient2Limit(
+	name string,
 	logger Logger,
 	registry core.MetricRegistry,
+	tags ...string,
 ) *Gradient2Limit {
 	l, _ := NewGradient2Limit(
+		name,
 		4,
 		1000,
 		4,
@@ -52,6 +56,7 @@ func NewDefaultGradient2Limit(
 		100,
 		logger,
 		registry,
+		tags...,
 	)
 	return l
 }
@@ -70,6 +75,7 @@ func NewDefaultGradient2Limit(
 // @param longWindow: long time window for the exponential avg recordings.
 // @param registry: metric registry to publish metrics
 func NewGradient2Limit(
+	name string,
 	initialLimit int, // Initial limit used by the limiter
 	maxConurrency int,
 	minLimit int,
@@ -80,6 +86,7 @@ func NewGradient2Limit(
 	longWindow int,
 	logger Logger,
 	registry core.MetricRegistry,
+	tags ...string,
 ) (*Gradient2Limit, error) {
 	if smoothing > 1.0 || smoothing < 0 {
 		smoothing = 0.2
@@ -117,7 +124,7 @@ func NewGradient2Limit(
 		initialLimit = 4
 	}
 
-	return &Gradient2Limit{
+	l := &Gradient2Limit{
 		estimatedLimit:          float64(initialLimit),
 		maxLimit:                maxConurrency,
 		minLimit:                minLimit,
@@ -132,7 +139,11 @@ func NewGradient2Limit(
 		listeners:               make([]core.LimitChangeListener, 0),
 		logger:                  logger,
 		registry:                registry,
-	}, nil
+	}
+
+	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
+
+	return l, nil
 }
 
 // EstimatedLimit returns the current estimated limit.
@@ -160,6 +171,8 @@ func (l *Gradient2Limit) notifyListeners(newLimit int) {
 func (l *Gradient2Limit) OnSample(startTime int64, rtt int64, inFlight int, didDrop bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+
+	l.commonSampler.Sample(rtt, inFlight, didDrop)
 
 	queueSize := l.queueSizeFunc(int(l.estimatedLimit))
 

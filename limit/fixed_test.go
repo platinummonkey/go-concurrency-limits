@@ -10,7 +10,7 @@ import (
 func TestFixedLimit(t *testing.T) {
 	t.Parallel()
 	asrt := assert.New(t)
-	l := NewFixedLimit(10)
+	l := NewFixedLimit("test", 10, nil)
 	asrt.Equal(10, l.EstimatedLimit())
 
 	l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 10, false)

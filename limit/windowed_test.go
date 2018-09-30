@@ -13,7 +13,7 @@ func TestWindowedLimit(t *testing.T) {
 	t.Run("DefaultWindowedLimit", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		delegate := NewSettableLimit(10)
+		delegate := NewSettableLimit("test", 10, nil)
 		l := NewDefaultWindowedLimit(delegate)
 		asrt.Equal(10, l.EstimatedLimit())
 	})
@@ -21,7 +21,7 @@ func TestWindowedLimit(t *testing.T) {
 	t.Run("NewWindowedLimit", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		delegate := NewSettableLimit(10)
+		delegate := NewSettableLimit("test", 10, nil)
 		minWindowTime := (time.Millisecond * 100).Nanoseconds()
 		l, err := NewWindowedLimit(minWindowTime, minWindowTime*2, 10, 10, delegate)
 		asrt.NoError(err)
@@ -70,7 +70,7 @@ func TestWindowedLimit(t *testing.T) {
 	t.Run("String", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		delegate := NewSettableLimit(10)
+		delegate := NewSettableLimit("test", 10, nil)
 		minWindowTime := (time.Millisecond * 100).Nanoseconds()
 		l, err := NewWindowedLimit(minWindowTime, minWindowTime*2, 10, 10, delegate)
 		asrt.NoError(err)

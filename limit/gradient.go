@@ -16,21 +16,24 @@ import (
 // Why square root?  Because it's better than a fixed queue size that becomes too small for large limits but still
 // prevents the limit from growing too much by slowing down growth as the limit grows.
 type GradientLimit struct {
-	estimatedLimit             float64 // Estimated concurrency limit based on our algorithm
-	maxLimit                   int     // Maximum allowed limit providing an upper bound failsafe
-	minLimit                   int
-	queueSizeFunc              func(estimatedLimit int) int
-	smoothing                  float64
-	rttTolerance               float64
+	estimatedLimit       float64 // Estimated concurrency limit based on our algorithm
+	maxLimit             int     // Maximum allowed limit providing an upper bound failsafe
+	minLimit             int
+	queueSizeFunc        func(estimatedLimit int) int
+	smoothing            float64
+	rttTolerance         float64
+	probeInterval        int
+	resetRTTCounter      int
+	rttNoLoadMeasurement core.MeasurementInterface
+	listeners            []core.LimitChangeListener
+	logger               Logger
+
+	// metrics
+	registry                   core.MetricRegistry
+	commonSampler              *core.CommonMetricSampler
 	minRTTSampleListener       core.MetricSampleListener
 	minWindowRTTSampleListener core.MetricSampleListener
 	queueSizeSampleListener    core.MetricSampleListener
-	probeInterval              int
-	resetRTTCounter            int
-	rttNoLoadMeasurement       core.MeasurementInterface
-	listeners                  []core.LimitChangeListener
-	logger                     Logger
-	registry                   core.MetricRegistry
 
 	mu sync.RWMutex
 }
@@ -44,6 +47,7 @@ func nextProbeCountdown(probeInterval int) int {
 
 // NewGradientLimitWithRegistry will create a new GradientLimitWithRegistry.
 func NewGradientLimitWithRegistry(
+	name string, // Name of the Limit for metrics
 	initialLimit int, // Initial limit used by the limiter
 	minLimit int, // Minimum concurrency limit allowed.  The minimum helps prevent the algorithm from adjust the limit too far down.  Note that this limit is not desirable when use as backpressure for batch apps.
 	maxConcurrency int, // Maximum allowable concurrency.  Any estimated concurrency will be capped.
@@ -53,6 +57,7 @@ func NewGradientLimitWithRegistry(
 	probeInterval int, // The limiter will probe for a new noload RTT every probeInterval updates.  Default value is 1000. Set to -1 to disable
 	logger Logger, // logger for more information
 	registry core.MetricRegistry,
+	tags ...string,
 ) *GradientLimit {
 	if initialLimit <= 0 {
 		initialLimit = 50
@@ -78,8 +83,11 @@ func NewGradientLimitWithRegistry(
 	if logger == nil {
 		logger = NoopLimitLogger{}
 	}
+	if registry == nil {
+		registry = core.EmptyMetricRegistryInstance
+	}
 
-	return &GradientLimit{
+	l := &GradientLimit{
 		estimatedLimit:       float64(initialLimit),
 		maxLimit:             maxConcurrency,
 		minLimit:             minLimit,
@@ -93,10 +101,13 @@ func NewGradientLimitWithRegistry(
 		logger:               logger,
 		registry:             registry,
 
-		minRTTSampleListener:       registry.RegisterDistribution(core.MetricMinRTT),
-		minWindowRTTSampleListener: registry.RegisterDistribution(core.MetricWindowMinRTT),
-		queueSizeSampleListener:    registry.RegisterDistribution(core.MetricWindowQueueSize),
+		minRTTSampleListener:       registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricMinRTT, name), tags...),
+		minWindowRTTSampleListener: registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricWindowMinRTT, name), tags...),
+		queueSizeSampleListener:    registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricWindowQueueSize, name), tags...),
 	}
+
+	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
+	return l
 }
 
 // EstimatedLimit returns the current estimated limit.
@@ -132,6 +143,7 @@ func (l *GradientLimit) OnSample(startTime int64, rtt int64, inFlight int, didDr
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
+	l.commonSampler.Sample(rtt, inFlight, didDrop)
 	l.minWindowRTTSampleListener.AddSample(float64(rtt))
 
 	queueSize := l.queueSizeFunc(int(l.estimatedLimit))

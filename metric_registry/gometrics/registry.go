@@ -1,4 +1,4 @@
-package go_metrics
+package gometrics
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ import (
 const defaultMetricPrefix = "limiter."
 const defaultPollFrequency = time.Second * 5
 
-type gometricsMetricSampleListener struct {
+type metricSampleListener struct {
 	distribution gometrics.Histogram
 	timer        gometrics.Timer
 	counter      gometrics.Counter
@@ -23,7 +23,7 @@ type gometricsMetricSampleListener struct {
 }
 
 // AddSample will add a sample metric to the listener
-func (l *gometricsMetricSampleListener) AddSample(value float64, tags ...string) {
+func (l *metricSampleListener) AddSample(value float64, tags ...string) {
 	switch l.metricType {
 	case 0: // distribution
 		l.distribution.Update(int64(value))
@@ -48,13 +48,13 @@ func (p *gometricsMetricPoller) poll() (string, float64, []string, bool) {
 	return p.id, val, p.tags, ok
 }
 
-// GoMetricsMetricRegistry will implements a MetricRegistry for sending metrics via go-metrics with any reporter.
-type GoMetricsMetricRegistry struct {
+// MetricRegistry will implements a MetricRegistry for sending metrics via go-metrics with any reporter.
+type MetricRegistry struct {
 	registry            gometrics.Registry
 	prefix              string
 	pollFrequency       time.Duration
 	registeredGauges    map[string]*gometricsMetricPoller
-	registeredListeners map[string]*gometricsMetricSampleListener
+	registeredListeners map[string]*metricSampleListener
 
 	started bool
 	stopper chan bool
@@ -69,7 +69,7 @@ func NewGoMetricsMetricRegistry(
 	addr string,
 	prefix string,
 	pollFrequency time.Duration,
-) (*GoMetricsMetricRegistry, error) {
+) (*MetricRegistry, error) {
 	if prefix == "" {
 		prefix = defaultMetricPrefix
 	}
@@ -85,7 +85,7 @@ func NewGoMetricsMetricRegistry(
 		return nil, fmt.Errorf("registry required")
 	}
 
-	return &GoMetricsMetricRegistry{
+	return &MetricRegistry{
 		registry:      registry,
 		prefix:        prefix,
 		pollFrequency: pollFrequency,
@@ -94,7 +94,7 @@ func NewGoMetricsMetricRegistry(
 }
 
 // Start will start the metric registry polling
-func (r *GoMetricsMetricRegistry) Start() {
+func (r *MetricRegistry) Start() {
 	r.mu.Lock()
 	if !r.started {
 		r.wg.Add(1)
@@ -106,7 +106,7 @@ func (r *GoMetricsMetricRegistry) Start() {
 	r.mu.Unlock()
 }
 
-func (r *GoMetricsMetricRegistry) run() {
+func (r *MetricRegistry) run() {
 	ticker := time.NewTicker(r.pollFrequency)
 	for {
 		select {
@@ -128,7 +128,7 @@ func (r *GoMetricsMetricRegistry) run() {
 }
 
 // Stop will gracefully stop the registry
-func (r *GoMetricsMetricRegistry) Stop() {
+func (r *MetricRegistry) Stop() {
 	r.mu.Lock()
 	if !r.started {
 		r.mu.Unlock()
@@ -141,7 +141,7 @@ func (r *GoMetricsMetricRegistry) Stop() {
 }
 
 // RegisterDistribution will register a distribution sample to this registry
-func (r *GoMetricsMetricRegistry) RegisterDistribution(
+func (r *MetricRegistry) RegisterDistribution(
 	ID string,
 	tags ...string,
 ) core.MetricSampleListener {
@@ -154,7 +154,7 @@ func (r *GoMetricsMetricRegistry) RegisterDistribution(
 		return l
 	}
 
-	r.registeredListeners[ID] = &gometricsMetricSampleListener{
+	r.registeredListeners[ID] = &metricSampleListener{
 		distribution: gometrics.GetOrRegisterHistogram(
 			r.prefix+ID,
 			r.registry,
@@ -168,7 +168,7 @@ func (r *GoMetricsMetricRegistry) RegisterDistribution(
 }
 
 // RegisterTiming will register a timing distribution sample to this registry
-func (r *GoMetricsMetricRegistry) RegisterTiming(
+func (r *MetricRegistry) RegisterTiming(
 	ID string,
 	tags ...string,
 ) core.MetricSampleListener {
@@ -181,7 +181,7 @@ func (r *GoMetricsMetricRegistry) RegisterTiming(
 		return l
 	}
 
-	r.registeredListeners[ID] = &gometricsMetricSampleListener{
+	r.registeredListeners[ID] = &metricSampleListener{
 		timer: gometrics.GetOrRegisterTimer(
 			r.prefix+ID,
 			r.registry,
@@ -194,7 +194,7 @@ func (r *GoMetricsMetricRegistry) RegisterTiming(
 }
 
 // RegisterCount will register a count sample to this registry
-func (r *GoMetricsMetricRegistry) RegisterCount(
+func (r *MetricRegistry) RegisterCount(
 	ID string,
 	tags ...string,
 ) core.MetricSampleListener {
@@ -207,7 +207,7 @@ func (r *GoMetricsMetricRegistry) RegisterCount(
 		return l
 	}
 
-	r.registeredListeners[ID] = &gometricsMetricSampleListener{
+	r.registeredListeners[ID] = &metricSampleListener{
 		counter: gometrics.GetOrRegisterCounter(
 			r.prefix+ID,
 			r.registry,
@@ -220,7 +220,7 @@ func (r *GoMetricsMetricRegistry) RegisterCount(
 }
 
 // RegisterGauge will register a gauge sample to this registry
-func (r *GoMetricsMetricRegistry) RegisterGauge(
+func (r *MetricRegistry) RegisterGauge(
 	ID string,
 	supplier core.MetricSupplier,
 	tags ...string,

@@ -21,6 +21,7 @@ func TestGradientLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewGradientLimitWithRegistry(
+			"test",
 			0,
 			0,
 			0,
@@ -41,6 +42,7 @@ func TestGradientLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewGradientLimitWithRegistry(
+			"test",
 			0,
 			0,
 			0,

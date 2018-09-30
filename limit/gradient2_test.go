@@ -14,7 +14,7 @@ func TestGradient2Limit(t *testing.T) {
 	t.Run("Default", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		l := NewDefaultGradient2Limit(nil, nil)
+		l := NewDefaultGradient2Limit("test", nil, nil)
 		asrt.NotNil(l)
 
 		asrt.Equal(4, l.EstimatedLimit())
@@ -25,6 +25,7 @@ func TestGradient2Limit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l, err := NewGradient2Limit(
+			"test",
 			50,
 			0,
 			0,

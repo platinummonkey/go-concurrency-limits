@@ -87,3 +87,38 @@ func (*EmptyMetricRegistry) Start() {}
 
 // Stop will stop the metric registry polling
 func (*EmptyMetricRegistry) Stop() {}
+
+// CommonMetricSampler is a set of common metrics reported by all Limit implementations
+type CommonMetricSampler struct {
+	RTTListener         MetricSampleListener
+	DropCounterListener MetricSampleListener
+	InFlightListener    MetricSampleListener
+}
+
+// NewCommonMetricSampler will create a new CommonMetricSampler that will auto-instrument metrics
+func NewCommonMetricSampler(registry MetricRegistry, limit Limit, name string, tags ...string) *CommonMetricSampler {
+	if registry == nil {
+		registry = EmptyMetricRegistryInstance
+	}
+
+	registry.RegisterGauge(
+		PrefixMetricWithName(MetricLimit, name),
+		NewIntMetricSupplierWrapper(limit.EstimatedLimit),
+		tags...,
+	)
+
+	return &CommonMetricSampler{
+		RTTListener:         registry.RegisterTiming(PrefixMetricWithName(MetricRTT, name), tags...),
+		DropCounterListener: registry.RegisterCount(PrefixMetricWithName(MetricDropped, name), tags...),
+		InFlightListener:    registry.RegisterDistribution(PrefixMetricWithName(MetricInFlight, name), tags...),
+	}
+}
+
+// Sample will sample the current sample for metric reporting.
+func (s *CommonMetricSampler) Sample(rtt int64, inFlight int, didDrop bool) {
+	if didDrop {
+		s.InFlightListener.AddSample(1.0)
+	}
+	s.RTTListener.AddSample(float64(rtt))
+	s.InFlightListener.AddSample(float64(inFlight))
+}
