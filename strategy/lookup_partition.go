@@ -41,8 +41,10 @@ func NewLookupPartitionWithMetricRegistry(
 		limit:   pLimit,
 		busy:    0,
 	}
-	sampleListener := registry.RegisterDistribution(core.MetricInFlight, PartitionTagName, name)
-	registry.RegisterGauge(core.MetricPartitionLimit, core.NewIntMetricSupplierWrapper(p.Limit), PartitionTagName, name)
+	sampleListener := registry.RegisterDistribution(core.MetricInFlight,
+		fmt.Sprintf("%s:%s", PartitionTagName, name))
+	registry.RegisterGauge(core.MetricPartitionLimit, core.NewIntMetricSupplierWrapper(p.Limit),
+		fmt.Sprintf("%s:%s", PartitionTagName, name))
 	p.MetricSampleListener = sampleListener
 	return &p
 }
