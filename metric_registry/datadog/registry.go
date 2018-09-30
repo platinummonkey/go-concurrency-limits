@@ -11,16 +11,16 @@ import (
 )
 
 const defaultMetricPrefix = "limiter."
-const defaultPollFrequency = time.Second*5
+const defaultPollFrequency = time.Second * 5
 
-type datadogMetricSampleListener struct {
-	client *dogstatsd.Client
-	id string
+type metricSampleListener struct {
+	client     *dogstatsd.Client
+	id         string
 	metricType uint8
 }
 
 // AddSample will add a sample metric to the listener
-func (l *datadogMetricSampleListener) AddSample(value float64, tags ...string) {
+func (l *metricSampleListener) AddSample(value float64, tags ...string) {
 	switch l.metricType {
 	case 0: // distribution
 		l.client.Distribution(l.id, value, tags, 1.0)
@@ -33,34 +33,34 @@ func (l *datadogMetricSampleListener) AddSample(value float64, tags ...string) {
 	}
 }
 
-type datadogMetricPoller struct {
+type metricPoller struct {
 	supplier core.MetricSupplier
-	id string
-	tags []string
+	id       string
+	tags     []string
 }
 
-func (p *datadogMetricPoller) poll() (string, float64, []string, bool) {
+func (p *metricPoller) poll() (string, float64, []string, bool) {
 	val, ok := p.supplier()
 	return p.id, val, p.tags, ok
 }
 
-// DatadogMetricRegistry will implements a MetricRegistry for sending metrics to Datadog via dogstatsd.
-type DatadogMetricRegistry struct {
-	client *dogstatsd.Client
-	prefix string
-	pollFrequency time.Duration
-	registeredGauges map[string]*datadogMetricPoller
-	registeredListeners map[string]*datadogMetricSampleListener
+// MetricRegistry will implements a MetricRegistry for sending metrics to Datadog via dogstatsd.
+type MetricRegistry struct {
+	client              *dogstatsd.Client
+	prefix              string
+	pollFrequency       time.Duration
+	registeredGauges    map[string]*metricPoller
+	registeredListeners map[string]*metricSampleListener
 
 	started bool
 	stopper chan bool
-	mu sync.Mutex
-	wg sync.WaitGroup
+	mu      sync.Mutex
+	wg      sync.WaitGroup
 }
 
-// NewDatadogMetricRegistry will create a new Datadog MetricRegistry.
+// NewMetricRegistry will create a new Datadog MetricRegistry.
 // This registry reports metrics to datadog using the datadog dogstatsd forwarding.
-func NewDatadogMetricRegistry(addr string, prefix string, pollFrequency time.Duration) (*DatadogMetricRegistry, error) {
+func NewMetricRegistry(addr string, prefix string, pollFrequency time.Duration) (*MetricRegistry, error) {
 	if prefix == "" {
 		prefix = defaultMetricPrefix
 	}
@@ -76,16 +76,16 @@ func NewDatadogMetricRegistry(addr string, prefix string, pollFrequency time.Dur
 	if err != nil {
 		return nil, err
 	}
-	return &DatadogMetricRegistry{
-		client: client,
-		prefix: prefix,
+	return &MetricRegistry{
+		client:        client,
+		prefix:        prefix,
 		pollFrequency: pollFrequency,
-		stopper: make(chan bool, 1),
+		stopper:       make(chan bool, 1),
 	}, nil
 }
 
 // Start will start the metric registry polling
-func (r *DatadogMetricRegistry) Start() {
+func (r *MetricRegistry) Start() {
 	r.mu.Lock()
 	if !r.started {
 		r.wg.Add(1)
@@ -97,7 +97,7 @@ func (r *DatadogMetricRegistry) Start() {
 	r.mu.Unlock()
 }
 
-func (r *DatadogMetricRegistry) run() {
+func (r *MetricRegistry) run() {
 	ticker := time.NewTicker(r.pollFrequency)
 	for {
 		select {
@@ -109,7 +109,7 @@ func (r *DatadogMetricRegistry) run() {
 			for _, g := range r.registeredGauges {
 				metricSuffix, value, tags, ok := g.poll()
 				if ok {
-					r.client.Gauge(r.prefix + metricSuffix, value, tags, 1.0)
+					r.client.Gauge(r.prefix+metricSuffix, value, tags, 1.0)
 				}
 			}
 			r.mu.Unlock()
@@ -118,7 +118,7 @@ func (r *DatadogMetricRegistry) run() {
 }
 
 // Stop will gracefully stop the registry
-func (r *DatadogMetricRegistry) Stop() {
+func (r *MetricRegistry) Stop() {
 	r.mu.Lock()
 	if !r.started {
 		r.mu.Unlock()
@@ -131,7 +131,7 @@ func (r *DatadogMetricRegistry) Stop() {
 }
 
 // RegisterDistribution will register a distribution sample to this registry
-func (r *DatadogMetricRegistry) RegisterDistribution(
+func (r *MetricRegistry) RegisterDistribution(
 	ID string,
 	tags ...string,
 ) core.MetricSampleListener {
@@ -144,17 +144,17 @@ func (r *DatadogMetricRegistry) RegisterDistribution(
 		return l
 	}
 
-	r.registeredListeners[ID] = &datadogMetricSampleListener{
-		client: r.client,
+	r.registeredListeners[ID] = &metricSampleListener{
+		client:     r.client,
 		metricType: 0,
-		id: r.prefix + ID,
+		id:         r.prefix + ID,
 	}
 
 	return r.registeredListeners[ID]
 }
 
 // RegisterTiming will register a timing distribution sample to this registry
-func (r *DatadogMetricRegistry) RegisterTiming(
+func (r *MetricRegistry) RegisterTiming(
 	ID string,
 	tags ...string,
 ) core.MetricSampleListener {
@@ -167,17 +167,17 @@ func (r *DatadogMetricRegistry) RegisterTiming(
 		return l
 	}
 
-	r.registeredListeners[ID] = &datadogMetricSampleListener{
-		client: r.client,
+	r.registeredListeners[ID] = &metricSampleListener{
+		client:     r.client,
 		metricType: 1,
-		id: r.prefix + ID,
+		id:         r.prefix + ID,
 	}
 
 	return r.registeredListeners[ID]
 }
 
 // RegisterCount will register a count sample to this registry
-func (r *DatadogMetricRegistry) RegisterCount(
+func (r *MetricRegistry) RegisterCount(
 	ID string,
 	tags ...string,
 ) core.MetricSampleListener {
@@ -190,17 +190,17 @@ func (r *DatadogMetricRegistry) RegisterCount(
 		return l
 	}
 
-	r.registeredListeners[ID] = &datadogMetricSampleListener{
-		client: r.client,
+	r.registeredListeners[ID] = &metricSampleListener{
+		client:     r.client,
 		metricType: 2,
-		id: r.prefix + ID,
+		id:         r.prefix + ID,
 	}
 
 	return r.registeredListeners[ID]
 }
 
 // RegisterGauge will register a gauge sample to this registry
-func (r *DatadogMetricRegistry) RegisterGauge(
+func (r *MetricRegistry) RegisterGauge(
 	ID string,
 	supplier core.MetricSupplier,
 	tags ...string,
@@ -217,12 +217,9 @@ func (r *DatadogMetricRegistry) RegisterGauge(
 		return
 	}
 
-	r.registeredGauges[ID] = &datadogMetricPoller{
+	r.registeredGauges[ID] = &metricPoller{
 		supplier: supplier,
-		id: ID,
-		tags: tags,
+		id:       ID,
+		tags:     tags,
 	}
 }
-
-
-

@@ -11,7 +11,7 @@ import (
 
 type testNotifyListener struct {
 	changes []int
-	mu sync.Mutex
+	mu      sync.Mutex
 }
 
 func (l *testNotifyListener) updater() core.LimitChangeListener {

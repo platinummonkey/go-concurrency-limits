@@ -1,6 +1,5 @@
 package go_metrics
 
-
 import (
 	"fmt"
 	"strings"
@@ -13,14 +12,14 @@ import (
 )
 
 const defaultMetricPrefix = "limiter."
-const defaultPollFrequency = time.Second*5
+const defaultPollFrequency = time.Second * 5
 
 type gometricsMetricSampleListener struct {
 	distribution gometrics.Histogram
-	timer gometrics.Timer
-	counter gometrics.Counter
-	id string
-	metricType uint8
+	timer        gometrics.Timer
+	counter      gometrics.Counter
+	id           string
+	metricType   uint8
 }
 
 // AddSample will add a sample metric to the listener
@@ -40,8 +39,8 @@ func (l *gometricsMetricSampleListener) AddSample(value float64, tags ...string)
 
 type gometricsMetricPoller struct {
 	supplier core.MetricSupplier
-	id string
-	tags []string
+	id       string
+	tags     []string
 }
 
 func (p *gometricsMetricPoller) poll() (string, float64, []string, bool) {
@@ -51,16 +50,16 @@ func (p *gometricsMetricPoller) poll() (string, float64, []string, bool) {
 
 // GoMetricsMetricRegistry will implements a MetricRegistry for sending metrics via go-metrics with any reporter.
 type GoMetricsMetricRegistry struct {
-	registry gometrics.Registry
-	prefix string
-	pollFrequency time.Duration
-	registeredGauges map[string]*gometricsMetricPoller
+	registry            gometrics.Registry
+	prefix              string
+	pollFrequency       time.Duration
+	registeredGauges    map[string]*gometricsMetricPoller
 	registeredListeners map[string]*gometricsMetricSampleListener
 
 	started bool
 	stopper chan bool
-	mu sync.Mutex
-	wg sync.WaitGroup
+	mu      sync.Mutex
+	wg      sync.WaitGroup
 }
 
 // NewGoMetricsMetricRegistry will create a new Datadog MetricRegistry.
@@ -87,10 +86,10 @@ func NewGoMetricsMetricRegistry(
 	}
 
 	return &GoMetricsMetricRegistry{
-		registry: registry,
-		prefix: prefix,
+		registry:      registry,
+		prefix:        prefix,
 		pollFrequency: pollFrequency,
-		stopper: make(chan bool, 1),
+		stopper:       make(chan bool, 1),
 	}, nil
 }
 
@@ -119,7 +118,7 @@ func (r *GoMetricsMetricRegistry) run() {
 			for _, g := range r.registeredGauges {
 				metricSuffix, value, _, ok := g.poll()
 				if ok {
-					m := gometrics.GetOrRegisterGaugeFloat64(r.prefix + metricSuffix, r.registry)
+					m := gometrics.GetOrRegisterGaugeFloat64(r.prefix+metricSuffix, r.registry)
 					m.Update(value)
 				}
 			}
@@ -157,12 +156,12 @@ func (r *GoMetricsMetricRegistry) RegisterDistribution(
 
 	r.registeredListeners[ID] = &gometricsMetricSampleListener{
 		distribution: gometrics.GetOrRegisterHistogram(
-			r.prefix + ID,
+			r.prefix+ID,
 			r.registry,
 			gometrics.NewUniformSample(100),
 		),
 		metricType: 0,
-		id: r.prefix + ID,
+		id:         r.prefix + ID,
 	}
 
 	return r.registeredListeners[ID]
@@ -184,11 +183,11 @@ func (r *GoMetricsMetricRegistry) RegisterTiming(
 
 	r.registeredListeners[ID] = &gometricsMetricSampleListener{
 		timer: gometrics.GetOrRegisterTimer(
-			r.prefix + ID,
+			r.prefix+ID,
 			r.registry,
 		),
 		metricType: 1,
-		id: r.prefix + ID,
+		id:         r.prefix + ID,
 	}
 
 	return r.registeredListeners[ID]
@@ -210,11 +209,11 @@ func (r *GoMetricsMetricRegistry) RegisterCount(
 
 	r.registeredListeners[ID] = &gometricsMetricSampleListener{
 		counter: gometrics.GetOrRegisterCounter(
-			r.prefix + ID,
+			r.prefix+ID,
 			r.registry,
 		),
 		metricType: 2,
-		id: r.prefix + ID,
+		id:         r.prefix + ID,
 	}
 
 	return r.registeredListeners[ID]
@@ -240,10 +239,7 @@ func (r *GoMetricsMetricRegistry) RegisterGauge(
 
 	r.registeredGauges[ID] = &gometricsMetricPoller{
 		supplier: supplier,
-		id: ID,
-		tags: tags,
+		id:       ID,
+		tags:     tags,
 	}
 }
-
-
-
