@@ -85,6 +85,7 @@ func TestLifoQueue(t *testing.T) {
 func TestLifoBlockingListener(t *testing.T) {
 	t.Parallel()
 	delegateLimiter, _ := NewDefaultLimiterWithDefaults(
+		"",
 		strategy.NewSimpleStrategy(20),
 		limit.NoopLimitLogger{},
 		core.EmptyMetricRegistryInstance,
@@ -112,6 +113,7 @@ func TestLifoBlockingLimiter(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		delegateLimiter, _ := NewDefaultLimiterWithDefaults(
+			"",
 			strategy.NewSimpleStrategy(20),
 			limit.NoopLimitLogger{},
 			core.EmptyMetricRegistryInstance,
@@ -125,6 +127,7 @@ func TestLifoBlockingLimiter(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		delegateLimiter, _ := NewDefaultLimiterWithDefaults(
+			"",
 			strategy.NewSimpleStrategy(20),
 			limit.NoopLimitLogger{},
 			core.EmptyMetricRegistryInstance,

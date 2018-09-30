@@ -60,6 +60,8 @@ func defaultServerResponseClassifier(
 }
 
 type interceptorConfig struct {
+	name                    string
+	tags                    []string
 	limiter                 core.Limiter
 	serverResponseClassifer ServerResponseClassifier
 	clientResponseClassifer ClientResponseClassifier
@@ -70,13 +72,37 @@ type interceptorConfig struct {
 type InterceptorOption func(*interceptorConfig)
 
 func defaults(cfg *interceptorConfig) {
+	name := cfg.name
+	if name == "" {
+		name = "default"
+	}
+	tags := cfg.tags
+	if tags == nil {
+		tags = make([]string, 0)
+	}
 	cfg.limiter, _ = limiter.NewDefaultLimiterWithDefaults(
+		name,
 		strategy.NewSimpleStrategy(1000),
 		limit.NoopLimitLogger{},
 		core.EmptyMetricRegistryInstance,
+		tags...,
 	)
 	cfg.clientResponseClassifer = defaultClientResponseClassifier
 	cfg.serverResponseClassifer = defaultServerResponseClassifier
+}
+
+// WithName sets the default limiter name if the default limiter is used, otherwise unused.
+func WithName(name string) InterceptorOption {
+	return func(cfg *interceptorConfig) {
+		cfg.name = name
+	}
+}
+
+// WithTags sets the default limiter tags if the default limiter is used, otherwise unused.
+func WithTags(tags []string) InterceptorOption {
+	return func(cfg *interceptorConfig) {
+		cfg.tags = tags
+	}
 }
 
 // WithLimiter sets the given limiter for the intercepted client.

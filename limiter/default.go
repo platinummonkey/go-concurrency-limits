@@ -122,12 +122,14 @@ type DefaultLimiter struct {
 
 // NewDefaultLimiterWithDefaults will create a DefaultLimit Limiter with the provided minimum config.
 func NewDefaultLimiterWithDefaults(
+	name string,
 	strategy core.Strategy,
 	logger limit.Logger,
 	registry core.MetricRegistry,
+	tags ...string,
 ) (*DefaultLimiter, error) {
 	return NewDefaultLimiter(
-		limit.NewDefaultVegasLimit(logger, registry),
+		limit.NewDefaultVegasLimit(name, logger, registry, tags...),
 		defaultMinWindowTime,
 		defaultMaxWindowTime,
 		defaultMinRTTThreshold,

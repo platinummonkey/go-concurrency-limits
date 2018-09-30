@@ -29,6 +29,7 @@ type VegasLimit struct {
 	increaseFunc      func(estimatedLimit float64) float64
 	decreaseFunc      func(estimatedLimit float64) float64
 	rttSampleListener core.MetricSampleListener
+	commonSampler     *core.CommonMetricSampler
 	probeMultipler    int
 	probeCountdown    int
 
@@ -39,8 +40,14 @@ type VegasLimit struct {
 }
 
 // NewDefaultVegasLimit returns a new default VegasLimit.
-func NewDefaultVegasLimit(logger Logger, registry core.MetricRegistry) *VegasLimit {
+func NewDefaultVegasLimit(
+	name string,
+	logger Logger,
+	registry core.MetricRegistry,
+	tags ...string,
+) *VegasLimit {
 	return NewVegasLimitWithRegistry(
+		name,
 		-1,
 		-1,
 		-1,
@@ -52,12 +59,20 @@ func NewDefaultVegasLimit(logger Logger, registry core.MetricRegistry) *VegasLim
 		-1,
 		logger,
 		registry,
+		tags...,
 	)
 }
 
 // NewDefaultVegasLimitWithLimit creates a new VegasLimit.
-func NewDefaultVegasLimitWithLimit(initialLimit int, logger Logger, registry core.MetricRegistry) *VegasLimit {
+func NewDefaultVegasLimitWithLimit(
+	name string,
+	initialLimit int,
+	logger Logger,
+	registry core.MetricRegistry,
+	tags ...string,
+) *VegasLimit {
 	return NewVegasLimitWithRegistry(
+		name,
 		initialLimit,
 		-1,
 		-1,
@@ -69,11 +84,13 @@ func NewDefaultVegasLimitWithLimit(initialLimit int, logger Logger, registry cor
 		-1,
 		logger,
 		registry,
+		tags...,
 	)
 }
 
 // NewVegasLimitWithRegistry will create a new VegasLimit.
 func NewVegasLimitWithRegistry(
+	name string,
 	initialLimit int,
 	maxConcurrency int,
 	smoothing float64,
@@ -85,6 +102,7 @@ func NewVegasLimitWithRegistry(
 	probeMultiplier int,
 	logger Logger,
 	registry core.MetricRegistry,
+	tags ...string,
 ) *VegasLimit {
 	if initialLimit < 1 {
 		initialLimit = 20
@@ -131,7 +149,11 @@ func NewVegasLimitWithRegistry(
 		logger = NoopLimitLogger{}
 	}
 
-	return &VegasLimit{
+	if registry == nil {
+		registry = core.EmptyMetricRegistryInstance
+	}
+
+	l := &VegasLimit{
 		estimatedLimit:    float64(initialLimit),
 		maxLimit:          maxConcurrency,
 		alphaFunc:         alphaFunc,
@@ -142,12 +164,14 @@ func NewVegasLimitWithRegistry(
 		smoothing:         smoothing,
 		probeMultipler:    probeMultiplier,
 		probeCountdown:    nextVegasProbeCountdown(probeMultiplier, float64(initialLimit)),
-		rttSampleListener: registry.RegisterDistribution(core.MetricMinRTT),
+		rttSampleListener: registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricMinRTT, name), tags...),
 		listeners:         make([]core.LimitChangeListener, 0),
 		registry:          registry,
 		logger:            logger,
 	}
 
+	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
+	return l
 }
 
 // LimitProbeDisabled represents the disabled value for probing.
@@ -183,6 +207,7 @@ func (l *VegasLimit) notifyListeners(newLimit float64) {
 func (l *VegasLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+	l.commonSampler.Sample(rtt, inFlight, didDrop)
 
 	if l.probeCountdown != LimitProbeDisabled {
 		l.probeCountdown--

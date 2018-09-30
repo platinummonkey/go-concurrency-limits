@@ -12,6 +12,7 @@ import (
 
 func createVegasLimit() *VegasLimit {
 	return NewVegasLimitWithRegistry(
+		"test",
 		10,
 		20,
 		1.0,
@@ -30,13 +31,13 @@ func TestVegasLimit(t *testing.T) {
 
 	t.Run("NewDefaultVegasLimit", func(t2 *testing.T) {
 		t2.Parallel()
-		l := NewDefaultVegasLimit(NoopLimitLogger{}, core.EmptyMetricRegistryInstance)
+		l := NewDefaultVegasLimit("test", NoopLimitLogger{}, nil)
 		assert.Equal(t2, 20, l.EstimatedLimit())
 	})
 
 	t.Run("NewDefaultVegasLimitWithLimit", func(t2 *testing.T) {
 		t2.Parallel()
-		l := NewDefaultVegasLimitWithLimit(5, NoopLimitLogger{}, core.EmptyMetricRegistryInstance)
+		l := NewDefaultVegasLimitWithLimit("test", 5, NoopLimitLogger{}, nil)
 		assert.Equal(t2, 5, l.EstimatedLimit())
 	})
 
@@ -85,6 +86,7 @@ func TestVegasLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewVegasLimitWithRegistry(
+			"test",
 			100,
 			200,
 			0.5,
@@ -116,6 +118,7 @@ func TestVegasLimit(t *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		l := NewVegasLimitWithRegistry(
+			"test",
 			100,
 			200,
 			-1,
