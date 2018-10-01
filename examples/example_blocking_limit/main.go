@@ -109,7 +109,7 @@ func main() {
 			go func(c int) {
 				for i := 0; i < 5; i++ {
 					defer wg.Done()
-					ctx := context.WithValue(context.Background(), testContextKey, c + i)
+					ctx := context.WithValue(context.Background(), testContextKey, c+i)
 					guardedResource.poll(ctx)
 				}
 			}(counter)
