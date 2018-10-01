@@ -19,7 +19,7 @@ deploy:
     branch: master
   local-dir: docs
 env:
-  - TEST_PACKAGES='./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers ./metric_registry/datadog ./metric_registry/gometrics'
+  - TEST_PACKAGES='./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers ./metric_registry/datadog ./metric_registry/gometrics ./examples/example_simple_limit'
 before_script:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
