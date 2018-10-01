@@ -33,7 +33,7 @@ func (r *resource) poll(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("limit exceeded for id=%d", id)
 	}
 	// sleep some time
-	time.Sleep(time.Millisecond * time.Duration(rand.Intn(90)+10))
+	time.Sleep(time.Second * time.Duration(rand.Intn(2)))
 	log.Printf("request succeeded for id=%d\n", id)
 	return true, nil
 }
@@ -70,12 +70,14 @@ func (r *protectedResource) poll(ctx context.Context) (bool, error) {
 
 func main() {
 	limitStrategy := strategy.NewSimpleStrategy(10)
-	externalResourceLimiter, err := limiter.NewDefaultLimiterWithDefaults(
-		"example_single_limit",
+	defaultLimiter, err := limiter.NewDefaultLimiterWithDefaults(
+		"example_blocking_limit",
 		limitStrategy,
 		limit.BuiltinLimitLogger{},
 		core.EmptyMetricRegistryInstance,
 	)
+	externalResourceLimiter := limiter.NewBlockingLimiter(defaultLimiter)
+
 	if err != nil {
 		log.Fatalf("Error creating limiter err=%v\n", err)
 		os.Exit(-1)
@@ -91,13 +93,14 @@ func main() {
 	}
 
 	endOfExampleTimer := time.NewTimer(time.Second * 10)
-	ticker := time.NewTicker(time.Millisecond * 100)
-	wg := sync.WaitGroup{}
+	ticker := time.NewTicker(time.Millisecond * 500)
 	counter := 0
+	wg := sync.WaitGroup{}
+
 	for {
 		select {
 		case <-endOfExampleTimer.C:
-			log.Printf("Waiting for goroutines to finish...")
+			log.Printf("Waiting for go-routines to finish...")
 			wg.Wait()
 			return
 		case <-ticker.C:
