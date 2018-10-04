@@ -177,6 +177,7 @@ func NewVegasLimitWithRegistry(
 		probeMultipler:    probeMultiplier,
 		probeJitter:       newProbeJitter(),
 		probeCount:        0,
+		rttNoLoad:         rttNoLoad,
 		rttSampleListener: registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricMinRTT, name), tags...),
 		listeners:         make([]core.LimitChangeListener, 0),
 		registry:          registry,
