@@ -39,8 +39,8 @@ type GradientLimit struct {
 }
 
 func nextProbeCountdown(probeInterval int) int {
-	if probeInterval == LimitProbeDisabled {
-		return LimitProbeDisabled
+	if probeInterval == ProbeDisabled {
+		return ProbeDisabled
 	}
 	return probeInterval + rand.Int()
 }
@@ -152,7 +152,7 @@ func (l *GradientLimit) OnSample(startTime int64, rtt int64, inFlight int, didDr
 	// Reset or probe for a new noload RTT and a new estimatedLimit.  It's necessary to cut the limit
 	// in half to avoid having the limit drift upwards when the RTT is probed during heavy load.
 	// To avoid decreasing the limit too much we don't allow it to go lower than the queueSize.
-	if l.probeInterval != LimitProbeDisabled {
+	if l.probeInterval != ProbeDisabled {
 		l.resetRTTCounter--
 		if l.resetRTTCounter <= 0 {
 			l.resetRTTCounter = nextProbeCountdown(l.probeInterval)

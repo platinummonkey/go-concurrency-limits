@@ -13,7 +13,7 @@ func TestGradientLimit(t *testing.T) {
 	t.Run("nextProbeInterval", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		asrt.Equal(LimitProbeDisabled, nextProbeCountdown(LimitProbeDisabled))
+		asrt.Equal(ProbeDisabled, nextProbeCountdown(ProbeDisabled))
 		asrt.True(nextProbeCountdown(1) > 0)
 	})
 

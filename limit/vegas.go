@@ -8,6 +8,7 @@ import (
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
 	"github.com/platinummonkey/go-concurrency-limits/limit/functions"
+	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
 // VegasLimit implements a Limiter based on TCP Vegas where the limit increases by alpha if the queue_use is
@@ -21,7 +22,7 @@ import (
 type VegasLimit struct {
 	estimatedLimit    float64
 	maxLimit          int
-	rttNoLoad         int64
+	rttNoLoad         core.MeasurementInterface
 	smoothing         float64
 	alphaFunc         func(estimatedLimit int) int
 	betaFunc          func(estimatedLimit int) int
@@ -31,7 +32,8 @@ type VegasLimit struct {
 	rttSampleListener core.MetricSampleListener
 	commonSampler     *core.CommonMetricSampler
 	probeMultipler    int
-	probeCountdown    int
+	probeJitter       float64
+	probeCount        int64
 
 	listeners []core.LimitChangeListener
 	registry  core.MetricRegistry
@@ -49,6 +51,7 @@ func NewDefaultVegasLimit(
 	return NewVegasLimitWithRegistry(
 		name,
 		-1,
+		nil,
 		-1,
 		-1,
 		nil,
@@ -74,6 +77,7 @@ func NewDefaultVegasLimitWithLimit(
 	return NewVegasLimitWithRegistry(
 		name,
 		initialLimit,
+		nil,
 		-1,
 		-1,
 		nil,
@@ -92,6 +96,7 @@ func NewDefaultVegasLimitWithLimit(
 func NewVegasLimitWithRegistry(
 	name string,
 	initialLimit int,
+	rttNoLoad core.MeasurementInterface,
 	maxConcurrency int,
 	smoothing float64,
 	alphaFunc func(estimatedLimit int) int,
@@ -107,12 +112,19 @@ func NewVegasLimitWithRegistry(
 	if initialLimit < 1 {
 		initialLimit = 20
 	}
+
+	if rttNoLoad == nil {
+		rttNoLoad = &measurements.MinimumMeasurement{}
+	}
+
 	if maxConcurrency < 0 {
 		maxConcurrency = 1000
 	}
+
 	if smoothing < 0 || smoothing > 1.0 {
 		smoothing = 1.0
 	}
+
 	if probeMultiplier <= 0 {
 		probeMultiplier = 30
 	}
@@ -163,7 +175,8 @@ func NewVegasLimitWithRegistry(
 		decreaseFunc:      decreaseFunc,
 		smoothing:         smoothing,
 		probeMultipler:    probeMultiplier,
-		probeCountdown:    nextVegasProbeCountdown(probeMultiplier, float64(initialLimit)),
+		probeJitter:       newProbeJitter(),
+		probeCount:        0,
 		rttSampleListener: registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricMinRTT, name), tags...),
 		listeners:         make([]core.LimitChangeListener, 0),
 		registry:          registry,
@@ -174,12 +187,11 @@ func NewVegasLimitWithRegistry(
 	return l
 }
 
-// LimitProbeDisabled represents the disabled value for probing.
-const LimitProbeDisabled = -1
+// ProbeDisabled represents the disabled value for probing.
+const ProbeDisabled = -1
 
-func nextVegasProbeCountdown(probeMultiplier int, estimatedLimit float64) int {
-	maxRange := int(float64(probeMultiplier)*estimatedLimit) / 2
-	return rand.Intn(maxRange) + maxRange // return roughly [maxVal / 2, maxVal]
+func newProbeJitter() float64 {
+	return (rand.Float64() / 2.0) + 0.5
 }
 
 // EstimatedLimit returns the current estimated limit.
@@ -209,28 +221,32 @@ func (l *VegasLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop 
 	defer l.mu.Unlock()
 	l.commonSampler.Sample(rtt, inFlight, didDrop)
 
-	if l.probeCountdown != LimitProbeDisabled {
-		l.probeCountdown--
-		if l.probeCountdown <= 0 {
-			l.logger.Debugf("probe MinRTT %d", rtt/1e6)
-			l.probeCountdown = nextVegasProbeCountdown(l.probeMultipler, l.estimatedLimit)
-			l.rttNoLoad = rtt
-			return
-		}
-	}
-
-	if l.rttNoLoad == 0 || rtt < l.rttNoLoad {
-		l.logger.Debugf("New MinRTT %d", rtt/1e6)
-		l.rttNoLoad = rtt
+	l.probeCount++
+	if l.shouldProbe() {
+		l.logger.Debugf("Probe triggered update to RTT No Load %d ms from %d ms",
+			rtt/1e6, int64(l.rttNoLoad.Get())/1e6)
+		l.probeJitter = newProbeJitter()
+		l.probeCount = 0
+		l.rttNoLoad.Add(float64(rtt))
 		return
 	}
 
-	l.rttSampleListener.AddSample(float64(l.rttNoLoad))
+	if l.rttNoLoad.Get() == 0 || float64(rtt) < l.rttNoLoad.Get() {
+		l.logger.Debugf("Update RTT No Load to %d ms from %d ms", rtt/1e6, int64(l.rttNoLoad.Get())/1e6)
+		l.rttNoLoad.Add(float64(rtt))
+		return
+	}
+
+	l.rttSampleListener.AddSample(l.rttNoLoad.Get())
 	l.updateEstimatedLimit(startTime, rtt, inFlight, didDrop)
 }
 
+func (l *VegasLimit) shouldProbe() bool {
+	return int64(l.probeJitter*float64(l.probeMultipler)*l.estimatedLimit) <= l.probeCount
+}
+
 func (l *VegasLimit) updateEstimatedLimit(startTime int64, rtt int64, inFlight int, didDrop bool) {
-	queueSize := int(math.Ceil(l.estimatedLimit * (1 - float64(l.rttNoLoad)/float64(rtt))))
+	queueSize := int(math.Ceil(l.estimatedLimit * (1 - l.rttNoLoad.Get()/float64(rtt))))
 
 	var newLimit float64
 	// Treat any drop (i.e timeout) as needing to reduce the limit
@@ -264,7 +280,7 @@ func (l *VegasLimit) updateEstimatedLimit(startTime int64, rtt int64, inFlight i
 
 	if int(newLimit) != int(l.estimatedLimit) && l.logger.IsDebugEnabled() {
 		l.logger.Debugf("New limit=%d, minRTT=%d ms, winRTT=%d ms, queueSize=%d",
-			int(newLimit), l.rttNoLoad/1e6, rtt/1e6, queueSize)
+			int(newLimit), int64(l.rttNoLoad.Get())/1e6, rtt/1e6, queueSize)
 	}
 
 	l.estimatedLimit = newLimit
@@ -275,7 +291,7 @@ func (l *VegasLimit) updateEstimatedLimit(startTime int64, rtt int64, inFlight i
 func (l *VegasLimit) RTTNoLoad() int64 {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-	return l.rttNoLoad
+	return int64(l.rttNoLoad.Get())
 }
 
 func (l *VegasLimit) String() string {

@@ -14,6 +14,7 @@ func createVegasLimit() *VegasLimit {
 	return NewVegasLimitWithRegistry(
 		"test",
 		10,
+		nil,
 		20,
 		1.0,
 		functions.FixedQueueSizeFunc(3),
@@ -88,6 +89,7 @@ func TestVegasLimit(t *testing.T) {
 		l := NewVegasLimitWithRegistry(
 			"test",
 			100,
+			nil,
 			200,
 			0.5,
 			nil,
@@ -120,6 +122,7 @@ func TestVegasLimit(t *testing.T) {
 		l := NewVegasLimitWithRegistry(
 			"test",
 			100,
+			nil,
 			200,
 			-1,
 			nil,
