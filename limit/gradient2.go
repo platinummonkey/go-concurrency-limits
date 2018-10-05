@@ -54,6 +54,7 @@ func NewDefaultGradient2Limit(
 		5,
 		10,
 		100,
+		nil,
 		logger,
 		registry,
 		tags...,
@@ -84,6 +85,7 @@ func NewGradient2Limit(
 	driftMultiplier float64,
 	shortWindow int,
 	longWindow int,
+	longWindowWarmupFunc measurements.ExponentialWarmUpFunction,
 	logger Logger,
 	registry core.MetricRegistry,
 	tags ...string,
@@ -130,8 +132,8 @@ func NewGradient2Limit(
 		minLimit:                minLimit,
 		queueSizeFunc:           queueSizeFunc,
 		smoothing:               smoothing,
-		shortRTT:                measurements.NewExponentialAverageMeasurement(shortWindow, 10),
-		longRTT:                 measurements.NewExponentialAverageMeasurement(longWindow, 10),
+		shortRTT:                &measurements.SingleMeasurement{},
+		longRTT:                 measurements.NewExponentialAverageMeasurement(longWindow, 10, longWindowWarmupFunc),
 		maxDriftIntervals:       int(float64(shortWindow) * driftMultiplier),
 		longRTTSampleListener:   registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricMinRTT, name), tags...),
 		shortRTTSampleListener:  registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricWindowMinRTT, name), tags...),
@@ -199,6 +201,11 @@ func (l *Gradient2Limit) OnSample(startTime int64, rtt int64, inFlight int, didD
 		}
 	} else {
 		l.intervalsAbove = 0
+		currentLongRTT := l.longRTT.Get()
+		currentShortRTT := l.shortRTT.Get()
+		l.longRTT.Update(func(_ float64) float64 {
+			return (currentLongRTT + currentShortRTT) / 2
+		})
 	}
 
 	l.shortRTTSampleListener.AddSample(shortRTT)

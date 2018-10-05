@@ -16,7 +16,7 @@ type MeasurementInterface interface {
 	// Reset the internal state as if no samples were ever added.
 	Reset()
 
-	// OnSample will update the value given an operation function
+	// Update will update the value given an operation function
 	Update(operation func(value float64) float64)
 }
 

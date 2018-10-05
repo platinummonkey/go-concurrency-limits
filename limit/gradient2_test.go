@@ -34,6 +34,7 @@ func TestGradient2Limit(t *testing.T) {
 			-1,
 			-1,
 			-1,
+			nil,
 			NoopLimitLogger{},
 			core.EmptyMetricRegistryInstance,
 		)
@@ -46,7 +47,7 @@ func TestGradient2Limit(t *testing.T) {
 		l.OnSample(0, 10, 1, false)
 		asrt.Equal(50, l.EstimatedLimit())
 
-		for i := 0; i < 59; i++ {
+		for i := 0; i < 51; i++ {
 			l.OnSample(int64(i), 100, 1, false)
 			asrt.Equal(50, l.EstimatedLimit())
 		}
@@ -64,12 +65,12 @@ func TestGradient2Limit(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			l.OnSample(int64(i*10+30), 10, 1, true)
 		}
-		asrt.Equal(4, l.EstimatedLimit())
+		asrt.Equal(6, l.EstimatedLimit())
 
 		// slowly grow back up
 		for i := 0; i < 100; i++ {
 			l.OnSample(int64(i*10+3030), 1, 5, false)
 		}
-		asrt.Equal(12, l.EstimatedLimit())
+		asrt.Equal(13, l.EstimatedLimit())
 	})
 }

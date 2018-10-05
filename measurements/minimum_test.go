@@ -21,4 +21,6 @@ func TestMinimumMeasurement(t *testing.T) {
 		return value - 1
 	})
 	asrt.Equal(float64(-1.0), m.Get())
+
+	asrt.Equal("MinimumMeasurement{value=-1.00000}", m.String())
 }

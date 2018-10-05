@@ -1,6 +1,7 @@
 package measurements
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -41,4 +42,10 @@ func (m *MinimumMeasurement) Update(operation func(value float64) float64) {
 	current := m.value
 	m.mu.RUnlock()
 	m.Add(operation(current))
+}
+
+func (m *MinimumMeasurement) String() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return fmt.Sprintf("MinimumMeasurement{value=%0.5f}", m.value)
 }
