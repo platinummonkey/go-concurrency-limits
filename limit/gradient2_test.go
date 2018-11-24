@@ -17,8 +17,8 @@ func TestGradient2Limit(t *testing.T) {
 		l := NewDefaultGradient2Limit("test", nil, nil)
 		asrt.NotNil(l)
 
-		asrt.Equal(4, l.EstimatedLimit())
-		asrt.Equal("Gradient2Limit{limit=4}", l.String())
+		asrt.Equal(20, l.EstimatedLimit())
+		asrt.Equal("Gradient2Limit{limit=20}", l.String())
 	})
 
 	t.Run("OnSample", func(t2 *testing.T) {
