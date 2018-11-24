@@ -9,7 +9,37 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/measurements"
 )
 
-// Gradient2Limit implements a double exponential smoothing gradient.
+// Gradient2Limit implements a concurrency limit algorithm that adjust the limits based on the gradient of change current
+// average RTT and a long term exponentially smoothed average RTT. Unlike traditional congestion control algorithms we
+// use average instead of minimum since RPC methods can be very bursty due to various factors such as non-homogenous
+// request processing complexity as well as a wide distribution of data size.  We have also found that using minimum can
+// result in an bias towards an impractically low base RTT resulting in excessive load shedding.  An exponential decay is
+// applied to the base RTT so that the value is kept stable yet is allowed to adapt to long term changes in latency
+// characteristics.
+//
+// The core algorithm re-calculates the limit every sampling window (ex. 1 second) using the formula
+//     // Calculate the gradient limiting to the range [0.5, 1.0] to filter outliers
+//     gradient = min(0.5, max(1.0, currentRtt / longtermRtt));
+//
+//     // Calculate the new limit by applying the gradient and allowing for some queuing
+//     newLimit = gradient * currentLimit + queueSize;
+//
+//     // Update the limit using a smoothing factor (default 0.2)
+//     newLimit = currentLimit * (1-smoothing) + newLimit * smoothing
+//
+// The limit can be in one of three main states
+//
+// 1. Steady state
+//    In this state the average RTT is very stable and the current measurement whipsaws around this value, sometimes
+//    reducing the limit, sometimes increasing it.
+// 2. Transition from steady state to load
+//    In this state either the RPS to latency has spiked. The gradient is < 1.0 due to a growing request queue that
+//    cannot be handled by the system. Excessive requests and rejected due to the low limit. The baseline RTT grows using
+//    exponential decay but lags the current measurement, which keeps the gradient < 1.0 and limit low.
+// 3. Transition from load to steady state
+//    In this state the system goes back to steady state after a prolonged period of excessive load.  Requests aren't
+//    rejected and the sample RTT remains low. During this state the long term RTT may take some time to go back to
+//    normal and could potentially be several multiples higher than the current RTT.
 type Gradient2Limit struct {
 	// Estimated concurrency limit based on our algorithm
 	estimatedLimit float64
@@ -28,8 +58,6 @@ type Gradient2Limit struct {
 	longRTTSampleListener   core.MetricSampleListener
 	shortRTTSampleListener  core.MetricSampleListener
 	queueSizeSampleListener core.MetricSampleListener
-	maxDriftIntervals       int
-	intervalsAbove          int
 
 	mu        sync.RWMutex
 	listeners []core.LimitChangeListener
@@ -46,15 +74,12 @@ func NewDefaultGradient2Limit(
 ) *Gradient2Limit {
 	l, _ := NewGradient2Limit(
 		name,
-		4,
-		1000,
-		4,
+		20,
+		200,
+		20,
 		func(limit int) int { return 4 },
 		0.2,
-		5,
-		10,
-		100,
-		nil,
+		600,
 		logger,
 		registry,
 		tags...,
@@ -71,8 +96,6 @@ func NewDefaultGradient2Limit(
 //                       latencies remain low as a function of the current limit.
 // @param smoothing: Smoothing factor to limit how aggressively the estimated limit can shrink when queuing has been
 //                   detected.  Value of 0.0 to 1.0 where 1.0 means the limit is completely replicated by the new estimate.
-// @param driftMultiplier: Maximum multiple of the fast window after which we need to reset the limiter.
-// @param shortWindow: short time window for the exponential avg recordings.
 // @param longWindow: long time window for the exponential avg recordings.
 // @param registry: metric registry to publish metrics
 func NewGradient2Limit(
@@ -82,10 +105,7 @@ func NewGradient2Limit(
 	minLimit int,
 	queueSizeFunc func(limit int) int,
 	smoothing float64,
-	driftMultiplier float64,
-	shortWindow int,
 	longWindow int,
-	longWindowWarmupFunc measurements.ExponentialWarmUpFunction,
 	logger Logger,
 	registry core.MetricRegistry,
 	tags ...string,
@@ -98,12 +118,6 @@ func NewGradient2Limit(
 	}
 	if minLimit <= 0 {
 		minLimit = 4
-	}
-	if driftMultiplier <= 0 {
-		driftMultiplier = 5
-	}
-	if shortWindow < 0 {
-		shortWindow = 10
 	}
 	if longWindow < 0 {
 		longWindow = 100
@@ -133,8 +147,7 @@ func NewGradient2Limit(
 		queueSizeFunc:           queueSizeFunc,
 		smoothing:               smoothing,
 		shortRTT:                &measurements.SingleMeasurement{},
-		longRTT:                 measurements.NewExponentialAverageMeasurement(longWindow, 10, longWindowWarmupFunc),
-		maxDriftIntervals:       int(float64(shortWindow) * driftMultiplier),
+		longRTT:                 measurements.NewExponentialAverageMeasurement(longWindow, 10),
 		longRTTSampleListener:   registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricMinRTT, name), tags...),
 		shortRTTSampleListener:  registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricWindowMinRTT, name), tags...),
 		queueSizeSampleListener: registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricWindowQueueSize, name), tags...),
@@ -181,53 +194,32 @@ func (l *Gradient2Limit) OnSample(startTime int64, rtt int64, inFlight int, didD
 	shortRTT, _ := l.shortRTT.Add(float64(rtt))
 	longRTT, _ := l.longRTT.Add(float64(rtt))
 
-	// Under steady state we expect the short and long term RTT to whipsaw.  We can identify that a system is under
-	// long term load when there is no crossover detected for a certain number of internals, normally a multiple of
-	// the short term RTT window.  Since both short and long term RTT trend higher this state results in the limit
-	// slowly trending upwards, increasing the queue and latency.  To mitigate this we drop both the limit and
-	// long term latency value to effectively probe for less queueing and better latency.
-	if shortRTT > longRTT {
-		l.intervalsAbove++
-		if l.intervalsAbove > l.maxDriftIntervals {
-			l.intervalsAbove = 0
-			newLimit := l.minLimit
-			if queueSize > l.minLimit {
-				newLimit = queueSize
-			}
-			l.longRTT.Reset()
-			l.estimatedLimit = float64(newLimit)
-			l.notifyListeners(newLimit)
-			return
-		}
-	} else {
-		l.intervalsAbove = 0
-		currentLongRTT := l.longRTT.Get()
-		currentShortRTT := l.shortRTT.Get()
-		l.longRTT.Update(func(_ float64) float64 {
-			return (currentLongRTT + currentShortRTT) / 2
-		})
-	}
-
 	l.shortRTTSampleListener.AddSample(shortRTT)
 	l.longRTTSampleListener.AddSample(longRTT)
 	l.queueSizeSampleListener.AddSample(float64(queueSize))
 
-	// Rtt could be higher than rtt_noload because of smoothing rtt noload updates
-	// so set to 1.0 to indicate no queuing.  Otherwise calculate the slope and don't
-	// allow it to be reduced by more than half to avoid aggressive load-shedding due to
-	// outliers.
-	gradient := math.Max(0.5, math.Min(1.0, longRTT/shortRTT))
+	// If the long RTT is substantially larger than the short RTT then reduce the long RTT measurement.
+	// This can happen when latency returns to normal after a prolonged prior of excessive load.  Reducing the
+	// long RTT without waiting for the exponential smoothing helps bring the system back to steady state.
+	if (longRTT / shortRTT) > 2 {
+		l.longRTT.Update(func(value float64) float64 {
+			return value * 0.9
+		})
+	}
 
 	// Don't grow the limit if we are app limited
 	if float64(inFlight) < l.estimatedLimit/2 {
 		return
 	}
 
+	// Rtt could be higher than rtt_noload because of smoothing rtt noload updates
+	// so set to 1.0 to indicate no queuing.  Otherwise calculate the slope and don't
+	// allow it to be reduced by more than half to avoid aggressive load-sheding due to
+	// outliers.
+	gradient := math.Max(0.5, math.Min(1.0, longRTT/shortRTT))
 	newLimit := l.estimatedLimit*gradient + float64(queueSize)
-	if newLimit < l.estimatedLimit {
-		newLimit = math.Max(float64(l.minLimit), l.estimatedLimit+(1-l.smoothing)+l.smoothing*newLimit)
-	}
-	newLimit = math.Max(float64(queueSize), math.Min(float64(l.maxLimit), newLimit))
+	newLimit = l.estimatedLimit*(1-l.smoothing) + newLimit*l.smoothing
+	newLimit = math.Max(float64(l.minLimit), math.Min(float64(l.maxLimit), newLimit))
 
 	if newLimit != l.estimatedLimit && l.logger.IsDebugEnabled() {
 		l.logger.Debugf("new limit=%0.2f, shortRTT=%d ms, longRTT=%d ms, queueSize=%d, gradient=%0.2f",
