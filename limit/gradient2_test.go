@@ -32,9 +32,6 @@ func TestGradient2Limit(t *testing.T) {
 			nil,
 			-1,
 			-1,
-			-1,
-			-1,
-			nil,
 			NoopLimitLogger{},
 			core.EmptyMetricRegistryInstance,
 		)
@@ -47,30 +44,30 @@ func TestGradient2Limit(t *testing.T) {
 		l.OnSample(0, 10, 1, false)
 		asrt.Equal(50, l.EstimatedLimit())
 
-		for i := 0; i < 51; i++ {
-			l.OnSample(int64(i), 100, 1, false)
+		for i := 0; i < 25; i++ {
+			l.OnSample(int64(i), 10*int64(i), i, false)
 			asrt.Equal(50, l.EstimatedLimit())
 		}
 
 		// dropped samples cut off limit, smoothed down
-		l.OnSample(60, 100, 1, true)
-		asrt.Equal(4, l.EstimatedLimit())
-		asrt.Equal(4, listener.changes[0])
+		l.OnSample(25, 2500, 25, true)
+		asrt.Equal(45, l.EstimatedLimit())
+		asrt.Equal(45, listener.changes[0])
 
 		// test new sample shouldn't grow too fast
-		l.OnSample(20, 10, 5, false)
-		asrt.Equal(6, l.EstimatedLimit())
+		l.OnSample(26, 10, 5, false)
+		asrt.Equal(45, l.EstimatedLimit())
 
 		// drain down again
 		for i := 0; i < 100; i++ {
-			l.OnSample(int64(i*10+30), 10, 1, true)
+			l.OnSample(int64(i+27), 1000, i, true)
 		}
-		asrt.Equal(6, l.EstimatedLimit())
+		asrt.Equal(21, l.EstimatedLimit())
 
 		// slowly grow back up
 		for i := 0; i < 100; i++ {
-			l.OnSample(int64(i*10+3030), 1, 5, false)
+			l.OnSample(int64(i+127), 1, 1, false)
 		}
-		asrt.Equal(13, l.EstimatedLimit())
+		asrt.Equal(21, l.EstimatedLimit())
 	})
 }
