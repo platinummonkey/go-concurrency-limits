@@ -164,7 +164,7 @@ func TestBlockingLimiter(t *testing.T) {
 		for i := 0; i < 8; i++ {
 			go func(j int) {
 				defer wg.Done()
-				ctx, cancel := context.WithTimeout(context.WithValue(context.Background(), testContextKey, j), time.Millisecond*410)
+				ctx, cancel := context.WithTimeout(context.WithValue(context.Background(), testContextKey, j), time.Millisecond*400)
 				defer cancel()
 				listener, ok := blockingLimiter.Acquire(ctx)
 				if ok && listener != nil {
