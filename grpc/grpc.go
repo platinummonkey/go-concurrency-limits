@@ -2,9 +2,9 @@ package grpc
 
 import (
 	"context"
-	"fmt"
 
 	golangGrpc "google.golang.org/grpc"
+	"google.golang.org/grpc/status"
 )
 
 // UnaryServerInterceptor will trace requests to the given grpc server.
@@ -17,7 +17,8 @@ func UnaryServerInterceptor(opts ...InterceptorOption) golangGrpc.UnaryServerInt
 	return func(ctx context.Context, req interface{}, info *golangGrpc.UnaryServerInfo, handler golangGrpc.UnaryHandler) (interface{}, error) {
 		token, ok := cfg.limiter.Acquire(ctx)
 		if !ok {
-			return nil, fmt.Errorf("limit exceeded for limiter=%v", cfg.limiter)
+			errResp, errCode, err := cfg.limitExceededResponseClassifier(ctx, info.FullMethod, req, cfg.limiter)
+			return errResp, status.Error(errCode, err.Error())
 		}
 		resp, err := handler(ctx, req)
 		respType := cfg.serverResponseClassifer(ctx, req, info, resp, err)
@@ -43,7 +44,8 @@ func UnaryClientInterceptor(opts ...InterceptorOption) golangGrpc.UnaryClientInt
 	return func(ctx context.Context, method string, req, reply interface{}, cc *golangGrpc.ClientConn, invoker golangGrpc.UnaryInvoker, opts ...golangGrpc.CallOption) error {
 		token, ok := cfg.limiter.Acquire(ctx)
 		if !ok {
-			return fmt.Errorf("limit exceeded for limiter=%v", cfg.limiter)
+			_, errCode, err := cfg.limitExceededResponseClassifier(ctx, method, req, cfg.limiter)
+			return status.Error(errCode, err.Error())
 		}
 		err := invoker(ctx, method, req, reply, cc, opts...)
 		respType := cfg.clientResponseClassifer(ctx, method, req, reply, err)
