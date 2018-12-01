@@ -17,9 +17,9 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/strategy"
 )
 
-type contextKey uint8
+type contextKey string
 
-const testContextKey = contextKey(1)
+const testContextKey contextKey = "jobID"
 
 type resource struct {
 	limiter *rate.Limiter
@@ -70,13 +70,14 @@ func (r *protectedResource) poll(ctx context.Context) (bool, error) {
 
 func main() {
 	limitStrategy := strategy.NewSimpleStrategy(10)
+	logger := limit.BuiltinLimitLogger{}
 	defaultLimiter, err := limiter.NewDefaultLimiterWithDefaults(
 		"example_blocking_limit",
 		limitStrategy,
-		limit.BuiltinLimitLogger{},
+		logger,
 		core.EmptyMetricRegistryInstance,
 	)
-	externalResourceLimiter := limiter.NewBlockingLimiter(defaultLimiter)
+	externalResourceLimiter := limiter.NewBlockingLimiter(defaultLimiter, 0, logger)
 
 	if err != nil {
 		log.Fatalf("Error creating limiter err=%v\n", err)
