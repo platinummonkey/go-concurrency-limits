@@ -2,8 +2,10 @@ package grpc
 
 import (
 	"context"
+	"fmt"
 
 	golangGrpc "google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
 	"github.com/platinummonkey/go-concurrency-limits/limit"
@@ -23,6 +25,10 @@ const (
 	ResponseTypeDropped
 )
 
+// LimitExceededResponseClassifier is a method definition for defining the error response type when the limit is exceeded
+// and a token is not able to be acquired. By default the RESOURCE_EXHUASTED type is returend.
+type LimitExceededResponseClassifier func(ctx context.Context, method string, req interface{}, l core.Limiter) (interface{}, codes.Code, error)
+
 // ClientResponseClassifier is a method definition for defining custom response types to the limiter algorithm to
 // correctly handle certain types of errors or embedded data.
 type ClientResponseClassifier func(ctx context.Context, method string, req, reply interface{}, err error) ResponseType
@@ -32,6 +38,15 @@ type ClientResponseClassifier func(ctx context.Context, method string, req, repl
 type ServerResponseClassifier func(
 	ctx context.Context, req interface{}, info *golangGrpc.UnaryServerInfo, resp interface{}, err error,
 ) ResponseType
+
+func defaultLimitExceededResponseClassifier(
+	ctx context.Context,
+	method string,
+	req interface{},
+	l core.Limiter,
+) (interface{}, codes.Code, error) {
+	return nil, codes.ResourceExhausted, fmt.Errorf("limit exceeded for limiter=%v", l)
+}
 
 func defaultClientResponseClassifier(
 	ctx context.Context,
@@ -63,6 +78,7 @@ type interceptorConfig struct {
 	name                    string
 	tags                    []string
 	limiter                 core.Limiter
+	limitExceededResponseClassifier LimitExceededResponseClassifier
 	serverResponseClassifer ServerResponseClassifier
 	clientResponseClassifer ClientResponseClassifier
 }
@@ -87,6 +103,7 @@ func defaults(cfg *interceptorConfig) {
 		core.EmptyMetricRegistryInstance,
 		tags...,
 	)
+	cfg.limitExceededResponseClassifier = defaultLimitExceededResponseClassifier
 	cfg.clientResponseClassifer = defaultClientResponseClassifier
 	cfg.serverResponseClassifer = defaultServerResponseClassifier
 }
@@ -109,6 +126,13 @@ func WithTags(tags []string) InterceptorOption {
 func WithLimiter(limiter core.Limiter) InterceptorOption {
 	return func(cfg *interceptorConfig) {
 		cfg.limiter = limiter
+	}
+}
+
+// WithClientResponseTypeClassifier sets the response classifier for the intercepted client
+func WithLimitExceededResponseClassifier(classifier LimitExceededResponseClassifier) InterceptorOption {
+	return func(cfg *interceptorConfig) {
+		cfg.limitExceededResponseClassifier = classifier
 	}
 }
 
