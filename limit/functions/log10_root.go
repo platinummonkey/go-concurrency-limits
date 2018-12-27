@@ -14,7 +14,7 @@ func Log10RootFunction(baseline int) func(estimatedLimit int) int {
 		if estimatedLimit < len(log10RootLookup) {
 			return max(baseline, log10RootLookup[estimatedLimit])
 		}
-		return max(baseline, int(math.Sqrt(float64(estimatedLimit))))
+		return max(baseline, int(math.Log10(float64(estimatedLimit))))
 	}
 }
 
@@ -26,6 +26,6 @@ func Log10RootFloatFunction(baseline float64) func(estimatedLimit float64) float
 		if int(estimatedLimit) < len(log10RootLookup) {
 			return math.Max(baseline, float64(log10RootLookup[int(estimatedLimit)]))
 		}
-		return math.Max(baseline, math.Sqrt(estimatedLimit))
+		return math.Max(baseline, math.Log10(estimatedLimit))
 	}
 }
