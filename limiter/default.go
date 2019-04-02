@@ -246,6 +246,6 @@ func (l *DefaultLimiter) String() string {
 		rttCandidate = l.sample.CandidateRTTNanoseconds() / 1000
 	}
 	return fmt.Sprintf(
-		"DefaultLimiter{RTTCandidate=%d ms, maxInFlight=%d, limit=%d, strategy=%v}",
+		"DefaultLimiter{RTTCandidate=%d ms, maxInFlight=%d, limit=%v, strategy=%v}",
 		rttCandidate, l.inFlight, l.limit, l.strategy)
 }
