@@ -22,6 +22,12 @@ func TestImmutableSampleWindow(t *testing.T) {
 		"ImmutableSampleWindow{minRTT=10, averageRTT=10, maxInFlight=5, sampleCount=1, didDrop=false}",
 		w2.String(),
 	)
+
+	// Adding a dropped sample should mark the window as having contained dropped tokens
 	w3 := w2.AddDroppedSample(-10, 500)
 	asrt.True(w3.DidDrop())
+
+	// Adding a successful sample should not void the dropped marker on the window
+	w4 := w3.AddSample(10, 10, 5)
+	asrt.True(w4.DidDrop())
 }
