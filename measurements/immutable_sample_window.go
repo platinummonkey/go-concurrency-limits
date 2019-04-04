@@ -62,7 +62,7 @@ func (s *ImmutableSampleWindow) AddSample(startTime int64, rtt int64, maxInFligh
 	if startTime < 0 {
 		startTime = time.Now().UnixNano()
 	}
-	return NewImmutableSampleWindow(startTime, minRTT, s.sum+rtt, maxInFlight, s.sampleCount+1, false)
+	return NewImmutableSampleWindow(startTime, minRTT, s.sum+rtt, maxInFlight, s.sampleCount+1, s.didDrop)
 }
 
 // AddDroppedSample will create a new immutable sample that was dropped.
