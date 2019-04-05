@@ -34,6 +34,29 @@ func UnaryServerInterceptor(opts ...InterceptorOption) golangGrpc.UnaryServerInt
 	}
 }
 
+func StreamServerInterceptor(opts ...InterceptorOption) golangGrpc.StreamServerInterceptor {
+	cfg := new(interceptorConfig)
+	defaults(cfg)
+	for _, fn := range opts {
+		fn(cfg)
+	}
+	return func(srv interface{}, ss golangGrpc.ServerStream, info *golangGrpc.StreamServerInfo, handler golangGrpc.StreamHandler) error {
+		ctx := ss.Context()
+		token, ok := cfg.limiter.Acquire(ctx)
+		if !ok {
+			_, errCode, err := cfg.limitExceededResponseClassifier(ctx, info.FullMethod, nil, cfg.limiter)
+			return status.Error(errCode, err.Error())
+		}
+		err := handler(srv, ss)
+		if err != nil {
+			token.OnDropped()
+			return err
+		}
+		token.OnSuccess()
+		return nil
+	}
+}
+
 // UnaryClientInterceptor will add tracing to a gprc client.
 func UnaryClientInterceptor(opts ...InterceptorOption) golangGrpc.UnaryClientInterceptor {
 	cfg := new(interceptorConfig)
