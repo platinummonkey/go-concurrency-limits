@@ -75,12 +75,12 @@ func defaultServerResponseClassifier(
 }
 
 type interceptorConfig struct {
-	name                    string
-	tags                    []string
-	limiter                 core.Limiter
+	name                            string
+	tags                            []string
+	limiter                         core.Limiter
 	limitExceededResponseClassifier LimitExceededResponseClassifier
-	serverResponseClassifer ServerResponseClassifier
-	clientResponseClassifer ClientResponseClassifier
+	serverResponseClassifer         ServerResponseClassifier
+	clientResponseClassifer         ClientResponseClassifier
 }
 
 // InterceptorOption represents an option that can be passed to the grpc unary
