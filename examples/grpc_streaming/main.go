@@ -77,14 +77,24 @@ func runServer() {
 		panic(err)
 	}
 
-	serverLimit := limit.NewFixedLimit("server-fixed-limit", 10, nil)
-	serverLimiter, err := limiter.NewDefaultLimiter(serverLimit, 0, 10000, 0, 10, strategy.NewSimpleStrategy(10), logger, nil)
+	serverLimitSend := limit.NewFixedLimit("server-fixed-limit-send", 1000, nil)
+	serverLimiterSend, err := limiter.NewDefaultLimiter(serverLimitSend, 0, 10000, 0, 10, strategy.NewSimpleStrategy(1000), logger, nil)
 	if err != nil {
 		panic(err)
 	}
-	serverOpts := []grpc.InterceptorOption{grpc.WithName("grpc-stream-server"), grpc.WithLimiter(serverLimiter)}
-	serverInterceptor := grpc.UnaryServerInterceptor(serverOpts...)
-	svc := golangGrpc.NewServer(golangGrpc.UnaryInterceptor(serverInterceptor))
+	serverLimitRecv := limit.NewFixedLimit("server-fixed-limit-recv", 10, nil)
+	serverLimiterRecv, err := limiter.NewDefaultLimiter(serverLimitRecv, 0, 10000, 0, 10, strategy.NewSimpleStrategy(10), logger, nil)
+	if err != nil {
+		panic(err)
+	}
+	serverOpts := []grpc.StreamInterceptorOption{
+		grpc.WithStreamSendName("grpc-stream-server-send"),
+		grpc.WithStreamRecvName("grpc-stream-server-recv"),
+		grpc.WithStreamSendLimiter(serverLimiterSend), // outbound guard
+		grpc.WithStreamRecvLimiter(serverLimiterRecv), // inbound guard
+	}
+	serverInterceptor := grpc.StreamServerInterceptor(serverOpts...)
+	svc := golangGrpc.NewServer(golangGrpc.StreamInterceptor(serverInterceptor))
 	s := &server{}
 	pb.RegisterPingPongServer(svc, s)
 	if err := svc.Serve(lis); err != nil {
