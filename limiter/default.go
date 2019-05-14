@@ -157,11 +157,11 @@ func NewDefaultLimiter(
 	if strategy == nil {
 		return nil, fmt.Errorf("stratewy must be provided")
 	}
-	if minWindowTime < defaultMinWindowTime {
-		return nil, fmt.Errorf("minWindowTime must be >= %d", defaultMinWindowTime)
+	if minWindowTime <= 0 {
+		return nil, fmt.Errorf("minWindowTime must be > 0 ns")
 	}
-	if maxWindowTime < defaultMaxWindowTime {
-		return nil, fmt.Errorf("maxWindowTime must be >= %d", defaultMaxWindowTime)
+	if maxWindowTime <= 0 {
+		return nil, fmt.Errorf("maxWindowTime must be > 0 ns")
 	}
 	if maxWindowTime < minWindowTime {
 		return nil, fmt.Errorf("minWindowTime must be <= maxWindowTime")

@@ -15,7 +15,7 @@ deploy:
     branch: master
   local-dir: docs
 env:
-  - TEST_PACKAGES='./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers ./metric_registry/datadog ./metric_registry/gometrics ./examples/example_simple_limit ./examples/example_blocking_limit'
+  - TEST_PACKAGES='./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers ./metric_registry/datadog ./metric_registry/gometrics ./examples/example_simple_limit ./examples/example_blocking_limit ./examples/grpc_unary ./examples/grpc_streaming'
 matrix:
   include:
   - go: "1.10"

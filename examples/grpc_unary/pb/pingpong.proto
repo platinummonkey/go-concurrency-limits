@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package main;
+
+option go_package="github.com/platinummonkey/go-concurrency-limits/examples/grpc_unary/pb";
+
+
+message Ping {
+    string message = 1;
+}
+
+message Pong {
+    string message = 1;
+}
+
+service PingPong {
+    rpc PingPong (Ping) returns (Pong) {}
+}
