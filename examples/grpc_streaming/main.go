@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
+	"time"
 
 	golangGrpc "google.golang.org/grpc"
 
@@ -19,16 +21,19 @@ import (
 )
 
 var options = struct {
-	mode string
-	port int
+	mode       string
+	port       int
+	numThreads int
 }{
-	mode: "server",
-	port: 8080,
+	mode:       "server",
+	port:       8080,
+	numThreads: 105,
 }
 
 func init() {
 	flag.StringVar(&options.mode, "mode", options.mode, "choose `client` or `server` mode")
 	flag.IntVar(&options.port, "port", options.port, "grpc port")
+	flag.IntVar(&options.numThreads, "threads", options.numThreads, "number of client threads")
 }
 
 func checkOptions() {
@@ -52,6 +57,8 @@ func (s *server) PingPong(ss pb.PingPong_PingPongServer) error {
 		return nil
 	}
 	log.Printf("Received: '%s'", ping.GetMessage())
+	// pretend to do some work
+	time.Sleep(time.Millisecond * 10)
 	err = ss.Send(&pb.Pong{Message: ping.GetMessage()})
 	if err != nil {
 		log.Printf("Send Error: %v", err)
@@ -78,12 +85,12 @@ func runServer() {
 	}
 
 	serverLimitSend := limit.NewFixedLimit("server-fixed-limit-send", 1000, nil)
-	serverLimiterSend, err := limiter.NewDefaultLimiter(serverLimitSend, 0, 10000, 0, 10, strategy.NewSimpleStrategy(1000), logger, nil)
+	serverLimiterSend, err := limiter.NewDefaultLimiter(serverLimitSend, 1000, 10000, 1e5, 1000, strategy.NewSimpleStrategy(1000), logger, nil)
 	if err != nil {
 		panic(err)
 	}
 	serverLimitRecv := limit.NewFixedLimit("server-fixed-limit-recv", 10, nil)
-	serverLimiterRecv, err := limiter.NewDefaultLimiter(serverLimitRecv, 0, 10000, 0, 10, strategy.NewSimpleStrategy(10), logger, nil)
+	serverLimiterRecv, err := limiter.NewDefaultLimiter(serverLimitRecv, 1000, 10000, 1e5, 1000, strategy.NewSimpleStrategy(10), logger, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -102,40 +109,56 @@ func runServer() {
 	}
 }
 
-func runClient() {
+func resetConnection() (*golangGrpc.ClientConn, pb.PingPong_PingPongClient) {
 	conn, err := golangGrpc.Dial(fmt.Sprintf("localhost:%d", options.port), golangGrpc.WithInsecure())
 	if err != nil {
 		panic(err)
 	}
-	defer conn.Close()
 	clientConn := pb.NewPingPongClient(conn)
 	ctx := context.Background()
 	client, err := clientConn.PingPong(ctx)
 	if err != nil {
 		panic(err)
 	}
-
-	i := 0
-	for {
-		// do this as fast as possible
-		queryServer(client, i)
-		i++
-	}
+	return conn, client
 }
 
-func queryServer(client pb.PingPong_PingPongClient, i int) {
+func runClient() {
+	wg := sync.WaitGroup{}
+	wg.Add(options.numThreads)
+	for i := 0; i < options.numThreads; i++ {
+		go func(workerID int) {
+			conn, client := resetConnection()
+			j := 0
+			for {
+				// do this as fast as possible
+				err := queryServer(client, workerID, j)
+				if err != nil {
+					client.CloseSend()
+					conn.Close()
+					conn, client = resetConnection()
+				}
+				j++
+			}
+		}(i)
+	}
+	wg.Wait()
+}
+
+func queryServer(client pb.PingPong_PingPongClient, workerID int, i int) error {
 	msg := &pb.Ping{
-		Message: fmt.Sprintf("hello %d", i),
+		Message: fmt.Sprintf("hello %d from %d", i, workerID),
 	}
 	err := client.Send(msg)
 	if err != nil {
-		log.Printf("[failed]\t - %v", err)
-		return
+		log.Printf("[failed](%d - %d)\t - %v", workerID, i, err)
+		return err
 	}
 	pong, err := client.Recv()
 	if err != nil {
-		log.Printf("[failed]\t - %v", err)
+		log.Printf("[failed](%d - %d)\t - %v", workerID, i, err)
 	} else {
-		log.Printf("[pass]\t - %s", pong.GetMessage())
+		log.Printf("[pass](%d - %d)\t - %s", workerID, i, pong.GetMessage())
 	}
+	return err
 }

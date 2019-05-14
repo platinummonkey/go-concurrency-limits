@@ -32,6 +32,7 @@ func (s *ssRecvWrapper) RecvMsg(m interface{}) error {
 		}
 		return err
 	}
+	token.OnSuccess()
 	return nil
 }
 
@@ -56,6 +57,7 @@ func (s *ssRecvWrapper) SendMsg(m interface{}) error {
 		}
 		return err
 	}
+	token.OnSuccess()
 	return nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	golangGrpc "google.golang.org/grpc"
@@ -20,16 +21,19 @@ import (
 )
 
 var options = struct {
-	mode string
-	port int
+	mode       string
+	port       int
+	numThreads int
 }{
-	mode: "server",
-	port: 8080,
+	mode:       "server",
+	port:       8080,
+	numThreads: 105,
 }
 
 func init() {
 	flag.StringVar(&options.mode, "mode", options.mode, "choose `client` or `server` mode")
 	flag.IntVar(&options.port, "port", options.port, "grpc port")
+	flag.IntVar(&options.numThreads, "threads", options.numThreads, "number of client threads")
 }
 
 func checkOptions() {
@@ -48,6 +52,8 @@ type server struct {
 
 func (s *server) PingPong(ctx context.Context, in *pb.Ping) (*pb.Pong, error) {
 	log.Printf("Received: '%s'", in.GetMessage())
+	// pretend to do some work
+	time.Sleep(time.Millisecond * 10)
 	return &pb.Pong{Message: in.GetMessage()}, nil
 }
 
@@ -70,7 +76,7 @@ func runServer() {
 	}
 
 	serverLimit := limit.NewFixedLimit("server-fixed-limit", 10, nil)
-	serverLimiter, err := limiter.NewDefaultLimiter(serverLimit, 0, 10000, 0, 10, strategy.NewSimpleStrategy(10), logger, nil)
+	serverLimiter, err := limiter.NewDefaultLimiter(serverLimit, 1, 1000, 1e6, 100, strategy.NewSimpleStrategy(10), logger, nil)
 	if err != nil {
 		panic(err)
 	}
@@ -92,24 +98,31 @@ func runClient() {
 	defer conn.Close()
 	client := pb.NewPingPongClient(conn)
 
-	i := 0
-	for {
-		// do this as fast as possible
-		queryServer(client, i)
-		i++
+	wg := sync.WaitGroup{}
+	wg.Add(options.numThreads)
+	for i := 0; i < options.numThreads; i++ {
+		go func(workerID int) {
+			j := 0
+			// do this as fast as possible
+			for {
+				queryServer(client, workerID, j)
+				j++
+			}
+		}(i)
 	}
+	wg.Wait()
 }
 
-func queryServer(client pb.PingPongClient, i int) {
+func queryServer(client pb.PingPongClient, workerID int, i int) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	msg := &pb.Ping{
-		Message: fmt.Sprintf("hello %d", i),
+		Message: fmt.Sprintf("hello %d from %d", i, workerID),
 	}
 	r, err := client.PingPong(ctx, msg)
 	if err != nil {
-		log.Printf("[failed]\t - %v", err)
+		log.Printf("[failed](%d - %d)\t - %v", workerID, i, err)
 	} else {
-		log.Printf("[pass]\t - %s", r.GetMessage())
+		log.Printf("[pass](%d - %d)\t - %s", workerID, i, r.GetMessage())
 	}
 }
