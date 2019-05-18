@@ -5,16 +5,18 @@ import (
 	"sync"
 )
 
+// SimpleMovingVariance implements a simple moving variance calculation based on the simple moving average.
 type SimpleMovingVariance struct {
 	average  *SimpleExponentialMovingAverage
 	variance *SimpleExponentialMovingAverage
 
 	stdev      float64 // square root of the estimated variance
-	normalized float64 // (signal - mean) / stdev
+	normalized float64 // (input - mean) / stdev
 
 	mu sync.RWMutex
 }
 
+// NewSimpleMovingVariance will create a new exponential moving variance approximation based on the SimpleMovingAverage
 func NewSimpleMovingVariance(
 	alphaAverage float64,
 	alphaVariance float64,
@@ -33,6 +35,8 @@ func NewSimpleMovingVariance(
 	}, nil
 }
 
+// Add a single sample and update the internal state.
+// returns true if the internal state was updated, also return the current value.
 func (m *SimpleMovingVariance) Add(value float64) (float64, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -50,7 +54,7 @@ func (m *SimpleMovingVariance) Add(value float64) (float64, bool) {
 		// edge case
 		normalized = (value - mean) / stdev
 	}
-	//fmt.Printf("\tMV add: value=%0.5f mean=%0.5f variance=%0.5f stdev=%0.5f normalized=%0.5f\n", value, mean, variance, stdev, normalized)
+
 	if stdev != m.stdev || normalized != m.normalized {
 		changed = true
 	}
@@ -59,12 +63,14 @@ func (m *SimpleMovingVariance) Add(value float64) (float64, bool) {
 	return stdev, changed
 }
 
+// Get the current value.
 func (m *SimpleMovingVariance) Get() float64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.variance.Get()
 }
 
+// Reset the internal state as if no samples were ever added.
 func (m *SimpleMovingVariance) Reset() {
 	m.mu.Lock()
 	m.average.Reset()
@@ -74,6 +80,7 @@ func (m *SimpleMovingVariance) Reset() {
 	m.mu.Unlock()
 }
 
+// Update will update the value given an operation function
 func (m *SimpleMovingVariance) Update(operation func(value float64) float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

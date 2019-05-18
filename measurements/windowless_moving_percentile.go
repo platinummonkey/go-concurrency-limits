@@ -5,8 +5,12 @@ import (
 	"sync"
 )
 
-// Much credit goes to here: https://mjambon.com/2016-07-23-moving-percentile/
-
+// WindowlessMovingPercentile implements a moving percentile.
+// This implementation uses a windowless calculation that while not strictly always accurate,
+// provides a very close estimation in O(1) time and space.
+// Much credit goes to Martin Jambon here: https://mjambon.com/2016-07-23-moving-percentile/
+// a copy can be found in github.com/platinummonkey/go-concurrency-limits/docs/assets/moving_percentile_reference.pdf
+// and this is a port of the OCaml implementation provided in that reference.
 type WindowlessMovingPercentile struct {
 	p            float64
 	deltaInitial float64
@@ -21,9 +25,16 @@ type WindowlessMovingPercentile struct {
 	mu sync.RWMutex
 }
 
+// NewWindowlessMovingPercentile creates a new Windowless Moving Percentile
+// p - percentile requested, accepts (0,1)
+// deltaInitial - the initial delta value, here 0 is acceptable if you expect it to be rather stable at start, otherwise
+//                choose a larger value. This would be estimated: `delta := stdev * r` where `r` is a user chosen
+//                constant. Good values are generally from 0.001 to 0.01
+// movingAvgAlphaAvg - this is the alpha value for the simple moving average. A good start is 0.05. Accepts [0,1]
+// movingVarianceAlphaAvg - this is the alpha value for the simple moving variance. A good start is 0.05. Accepts [0,1]
 func NewWindowlessMovingPercentile(
-	p float64,
-	delta float64,
+	p float64, // percentile requested
+	deltaInitial float64,
 	movingAvgAlphaAvg float64,
 	movingVarianceAlphaVar float64,
 ) (*WindowlessMovingPercentile, error) {
@@ -42,8 +53,8 @@ func NewWindowlessMovingPercentile(
 	return &WindowlessMovingPercentile{
 		p:            p,
 		q:            q,
-		deltaInitial: delta,
-		delta:        delta,
+		deltaInitial: deltaInitial,
+		delta:        deltaInitial,
 		deltaState:   variance,
 	}, nil
 }

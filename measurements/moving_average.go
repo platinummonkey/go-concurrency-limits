@@ -6,6 +6,9 @@ import (
 	"sync"
 )
 
+// SimpleExponentialMovingAverage implements a simple exponential moving average
+// this implementation only uses a single alpha value to determine warm-up time and provides a mean
+// approximation
 type SimpleExponentialMovingAverage struct {
 	alpha        float64
 	initialAlpha float64
@@ -17,6 +20,7 @@ type SimpleExponentialMovingAverage struct {
 	mu sync.RWMutex
 }
 
+// NewSimpleExponentialMovingAverage creates a new simple moving average
 func NewSimpleExponentialMovingAverage(
 	alpha float64,
 ) (*SimpleExponentialMovingAverage, error) {
@@ -31,6 +35,8 @@ func NewSimpleExponentialMovingAverage(
 	}, nil
 }
 
+// Add a single sample and update the internal state.
+// returns true if the internal state was updated, also return the current value.
 func (m *SimpleExponentialMovingAverage) Add(value float64) (float64, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -56,12 +62,14 @@ func (m *SimpleExponentialMovingAverage) add(value float64) (float64, bool) {
 	return m.value, changed
 }
 
+// Get the current value.
 func (m *SimpleExponentialMovingAverage) Get() float64 {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.value
 }
 
+// Reset the internal state as if no samples were ever added.
 func (m *SimpleExponentialMovingAverage) Reset() {
 	m.mu.Lock()
 	m.seenSamples = 0
@@ -70,6 +78,7 @@ func (m *SimpleExponentialMovingAverage) Reset() {
 	m.mu.Unlock()
 }
 
+// Update will update the value given an operation function
 func (m *SimpleExponentialMovingAverage) Update(operation func(value float64) float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
