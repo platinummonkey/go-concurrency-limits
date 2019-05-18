@@ -152,3 +152,6 @@ dialOption := grpc.WithUnaryInterceptor(
     ),
 )
 ```
+
+---
+[References used can be found here](_references.md)
