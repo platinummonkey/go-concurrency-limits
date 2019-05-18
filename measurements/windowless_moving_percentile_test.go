@@ -9,7 +9,7 @@ import (
 func TestWindowlessMovingPercentile(t *testing.T) {
 	t.Parallel()
 	asrt := assert.New(t)
-	m, err := NewWindowlessMovingPercentile(0.5, 0.01, 0.05, 0.05)
+	m, err := NewWindowlessMovingPercentile(0.9, 0.01, 0.05, 0.05)
 	asrt.NoError(err)
 	asrt.NotNil(m)
 	asrt.Equal(float64(0.0), m.Get())
@@ -22,5 +22,5 @@ func TestWindowlessMovingPercentile(t *testing.T) {
 		m.Add(1000)
 	}
 	m.Add(0.1)
-	asrt.Equal(175, int(m.Get()))
+	asrt.Equal(520, int(m.Get()))
 }
