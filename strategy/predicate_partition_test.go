@@ -310,4 +310,38 @@ func TestPredicatePartition(t *testing.T) {
 		asrt.Equal(1, busyCount)
 		asrt.Equal(1, strategy.BusyCount())
 	})
+
+	t.Run("AddRemoveDynamically", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+
+		testPartitions := makeTestPartitions()
+		strategy, err := NewPredicatePartitionStrategyWithMetricRegistry(
+			testPartitions,
+			1,
+			core.EmptyMetricRegistryInstance)
+		asrt.NoError(err, "failed to create strategy")
+		asrt.NotNil(strategy)
+		strategy.SetLimit(10)
+
+		// add a partition
+		testPartition := NewPredicatePartitionWithMetricRegistry(
+			"test1",
+			0.7,
+			matchers.StringPredicateMatcher("test1", false),
+			core.EmptyMetricRegistryInstance,
+		)
+		strategy.AddPartition(testPartition)
+		ctxTest := context.WithValue(context.Background(), matchers.StringPredicateContextKey, "test1")
+		token, ok := strategy.TryAcquire(ctxTest)
+		asrt.True(ok)
+		asrt.NotNil(token)
+
+		// remove a partition
+		strategy.RemovePartitionsMatching(ctxTest)
+		// we get the default token now
+		token, ok = strategy.TryAcquire(ctxTest)
+		asrt.False(ok)
+		asrt.False(token.IsAcquired())
+	})
 }
