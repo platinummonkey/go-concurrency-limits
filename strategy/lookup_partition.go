@@ -167,6 +167,32 @@ func NewLookupPartitionStrategyWithMetricRegistry(
 	return strategy, nil
 }
 
+// AddPartition will dynamically add a partition
+// will return false if this partition is already defined, otherwise true if successfully added
+func (s *LookupPartitionStrategy) AddPartition(name string, partition *LookupPartition) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, ok := s.partitions[name]
+	if ok {
+		return false
+	}
+	s.partitions[name] = partition
+	return true
+}
+
+// RemovePartition will remove a given partition dynamically
+// will return the busy count from that partition, along with true if the partition was found, otherwise false.
+func (s *LookupPartitionStrategy) RemovePartition(name string) (int, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	partition, ok := s.partitions[name]
+	if !ok {
+		return 0, false
+	}
+	delete(s.partitions, name)
+	return partition.BusyCount(), true
+}
+
 // TryAcquire a token from a partition
 func (s *LookupPartitionStrategy) TryAcquire(ctx context.Context) (token core.StrategyToken, ok bool) {
 	s.mu.Lock()

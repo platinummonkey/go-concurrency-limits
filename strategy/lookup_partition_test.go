@@ -312,4 +312,35 @@ func TestLookupPartitionStrategy(t *testing.T) {
 		asrt.Equal(1, busyCount)
 		asrt.Equal(1, strategy.BusyCount())
 	})
+
+	t.Run("AddRemoveDynamically", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		testPartitions := makeTestLookupPartitions()
+		strategy, err := NewLookupPartitionStrategyWithMetricRegistry(
+			testPartitions,
+			nil,
+			1,
+			core.EmptyMetricRegistryInstance,
+		)
+		asrt.NoError(err, "failed to create strategy")
+		asrt.NotNil(strategy)
+
+		// add a partition
+		testPartition := NewLookupPartitionWithMetricRegistry(
+			"test1",
+			0.7,
+			1,
+			core.EmptyMetricRegistryInstance,
+		)
+		strategy.AddPartition(testPartition.Name(), testPartition)
+		binLimit, err := strategy.BinLimit("test1")
+		asrt.NoError(err)
+		asrt.Equal(1, binLimit)
+
+		// remove a partition
+		strategy.RemovePartition("test1")
+		binLimit, err = strategy.BinLimit("test1")
+		asrt.Error(err)
+	})
 }

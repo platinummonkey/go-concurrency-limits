@@ -157,6 +157,43 @@ func NewPredicatePartitionStrategyWithMetricRegistry(
 	return strategy, nil
 }
 
+// AddPartition will dynamically add a partition
+// will return false if this partition is already defined, otherwise true if successfully added
+func (s *PredicatePartitionStrategy) AddPartition(partition *PredicatePartition) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	exists := false
+	for _, p := range s.partitions {
+		if p == partition {
+			exists = true
+			break
+		}
+	}
+	if exists {
+		return false
+	}
+	s.partitions = append(s.partitions, partition)
+	return true
+}
+
+// RemovePartitionsMatching will remove partitions dynamically
+// will return the removed matching partitions, and true if there are at least 1 removed partition
+func (s *PredicatePartitionStrategy) RemovePartitionsMatching(matcher context.Context) ([]*PredicatePartition, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := make([]*PredicatePartition, 0)
+	removed := make([]*PredicatePartition, 0)
+	for _, p := range s.partitions {
+		if p.predicate(matcher) {
+			removed = append(removed, p)
+		} else {
+			kept = append(kept, p)
+		}
+	}
+	s.partitions = kept
+	return removed, len(removed) > 0
+}
+
 // TryAcquire a token from a partition
 func (s *PredicatePartitionStrategy) TryAcquire(ctx context.Context) (core.StrategyToken, bool) {
 	s.mu.Lock()
