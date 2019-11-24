@@ -1,3 +1,10 @@
+language: go
+go:
+- 1.11
+- 1.12
+- 1.13
+env:
+  - GO111MODULE=on
 addons:
   apt:
     packages:
@@ -5,7 +12,17 @@ addons:
 install:
   - wget https://github.com/gohugoio/hugo/releases/download/v0.48/hugo_0.48_Linux-64bit.deb
   - sudo dpkg -i hugo_0.48_Linux-64bit.deb
-language: go
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/mattn/goveralls
+  - go get golang.org/x/lint/golint
+script:
+  - go fmt ./...
+  - golint ./...
+  - go vet ./...
+  - go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
+  - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken=${COVERALLS_TOKEN}
+after_success:
+  - cd docs && hugo && mv docs/* .
 deploy:
   provider: pages
   skip-cleanup: true
@@ -14,42 +31,3 @@ deploy:
   on:
     branch: master
   local-dir: docs
-env:
-  - TEST_PACKAGES='./core ./grpc ./limit ./limit/functions ./limiter ./measurements ./strategy ./strategy/matchers ./metric_registry/datadog ./metric_registry/gometrics ./examples/example_simple_limit ./examples/example_blocking_limit ./examples/grpc_unary ./examples/grpc_streaming'
-matrix:
-  include:
-  - go: "1.10"
-    before_script:
-      - go get golang.org/x/tools/cmd/cover
-      - go get github.com/mattn/goveralls
-      - go get golang.org/x/lint/golint
-      - go get github.com/golang/dep/cmd/dep
-      - dep ensure -v
-      - go fmt $TEST_PACKAGES
-      - golint $TEST_PACKAGES
-      - go vet -shadowstrict $TEST_PACKAGES
-  - go: "1.11"
-    before_script:
-      - go get golang.org/x/tools/cmd/cover
-      - go get github.com/mattn/goveralls
-      - go get golang.org/x/lint/golint
-      - go get github.com/golang/dep/cmd/dep
-      - dep ensure -v
-      - go fmt $TEST_PACKAGES
-      - golint $TEST_PACKAGES
-      - go vet -shadowstrict $TEST_PACKAGES
-  - go: "1.12"
-    before_script:
-      - go get golang.org/x/tools/cmd/cover
-      - go get github.com/mattn/goveralls
-      - go get golang.org/x/lint/golint
-      - go get github.com/golang/dep/cmd/dep
-      - dep ensure -v
-      - go fmt $TEST_PACKAGES
-      - golint $TEST_PACKAGES
-      - go vet $TEST_PACKAGES
-script:
-  - go test -v -race -covermode=atomic -coverprofile=coverage.out $TEST_PACKAGES
-  - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci -repotoken=${COVERALLS_TOKEN}
-after_success:
-  - cd docs && hugo && mv docs/* .
