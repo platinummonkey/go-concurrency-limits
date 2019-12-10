@@ -12,6 +12,7 @@ import (
 type AIMDLimit struct {
 	name         string
 	limit        int
+	increaseBy   int
 	backOffRatio float64
 
 	listeners     []core.LimitChangeListener
@@ -35,17 +36,22 @@ func NewAIMDLimit(
 	name string,
 	initialLimit int,
 	backOffRatio float64,
+	increaseBy int,
 	registry core.MetricRegistry,
 	tags ...string,
 ) *AIMDLimit {
 	if registry == nil {
 		registry = core.EmptyMetricRegistryInstance
 	}
+	if increaseBy <= 0 {
+		increaseBy = 1
+	}
 
 	l := &AIMDLimit{
 		name:         name,
 		limit:        initialLimit,
 		backOffRatio: backOffRatio,
+		increaseBy:   increaseBy,
 		listeners:    make([]core.LimitChangeListener, 0),
 		registry:     registry,
 	}
@@ -85,7 +91,7 @@ func (l *AIMDLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop b
 		l.limit = int(math.Max(1, math.Min(float64(l.limit-1), float64(int(float64(l.limit)*l.backOffRatio)))))
 		l.notifyListeners(l.limit)
 	} else if inFlight >= l.limit {
-		l.limit++
+		l.limit += l.increaseBy
 		l.notifyListeners(l.limit)
 	}
 	return

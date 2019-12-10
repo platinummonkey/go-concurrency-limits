@@ -20,7 +20,7 @@ func TestAIMDLimit(t *testing.T) {
 	t.Run("Default", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		l := NewAIMDLimit("test", 10, 0.9, nil)
+		l := NewAIMDLimit("test", 10, 0.9, 1, nil)
 		asrt.Equal(10, l.EstimatedLimit())
 		asrt.Equal(0.9, l.BackOffRatio())
 	})
@@ -28,7 +28,7 @@ func TestAIMDLimit(t *testing.T) {
 	t.Run("IncreaseOnSuccess", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		l := NewAIMDLimit("test", 10, 0.9, nil)
+		l := NewAIMDLimit("test", 10, 0.9, 1, nil)
 		listener := testNotifyListener{changes: make([]int, 0)}
 		l.NotifyOnChange(listener.updater())
 		l.OnSample(-1, (time.Millisecond * 1).Nanoseconds(), 10, false)
@@ -39,7 +39,7 @@ func TestAIMDLimit(t *testing.T) {
 	t.Run("DecreaseOnDrops", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		l := NewAIMDLimit("test", 10, 0.9, nil)
+		l := NewAIMDLimit("test", 10, 0.9, 1, nil)
 		l.OnSample(-1, 1, 1, true)
 		asrt.Equal(9, l.EstimatedLimit())
 	})
@@ -47,7 +47,7 @@ func TestAIMDLimit(t *testing.T) {
 	t.Run("String", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		l := NewAIMDLimit("test", 10, 0.9, nil)
+		l := NewAIMDLimit("test", 10, 0.9, 1, nil)
 		asrt.Equal("AIMDLimit{limit=10, backOffRatio=0.9000}", l.String())
 	})
 }
