@@ -23,4 +23,11 @@ func TestWindowlessMovingPercentile(t *testing.T) {
 	}
 	m.Add(0.1)
 	asrt.Equal(520, int(m.Get()))
+
+	m.Reset()
+	asrt.Equal(float64(0), m.Get())
+	m.Update(func(value float64) float64 {
+		return 1.0
+	})
+	asrt.Equal(float64(1.0), m.Get())
 }
