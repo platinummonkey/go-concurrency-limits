@@ -100,7 +100,9 @@ func (q *lifoQueue) remove(id uint64) {
 			next := cur.next
 			if prev == nil {
 				// at the top, just re-assign
-				next.prev = nil
+				if next != nil {
+					next.prev = nil
+				}
 				q.top.next = nil
 				q.top.prev = nil
 				q.top = next

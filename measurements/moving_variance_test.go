@@ -28,4 +28,12 @@ func TestSimpleMovingVariance(t *testing.T) {
 	m.Add(100)
 	m.Add(30)
 	asrt.InDelta(float64(1295.7841), m.Get(), 0.00005)
+
+	m.Reset()
+	asrt.Equal(float64(0), m.Get())
+	m.Update(func(value float64) float64 {
+		return 1.0
+	})
+	// this is ignored
+	asrt.Equal(float64(0), m.Get())
 }

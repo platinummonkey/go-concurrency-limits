@@ -15,7 +15,7 @@ import (
 // correctly handle certain types of errors or embedded data.
 type StreamClientResponseClassifier func(ctx context.Context, req interface{}, info *golangGrpc.StreamServerInfo, err error) ResponseType
 
-// ServerResponseClassifier is a method definition for defining custom response types to the limiter algorithm to
+// StreamServerResponseClassifier is a method definition for defining custom response types to the limiter algorithm to
 // correctly handle certain types of errors or embedded data.
 type StreamServerResponseClassifier func(
 	ctx context.Context, req interface{}, info *golangGrpc.StreamServerInfo, err error,

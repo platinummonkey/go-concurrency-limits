@@ -20,4 +20,7 @@ func TestSingleMeasurement(t *testing.T) {
 	})
 	asrt.Equal(float64(4.0), m.Get())
 	asrt.Equal("SingleMeasurement{value=4.00000}", m.String())
+
+	m.Reset()
+	asrt.Equal(float64(0), m.Get())
 }

@@ -12,46 +12,6 @@ import (
 
 const longBlockingTimeout = time.Hour * 24 * 30 * 12 * 100 // 100 years
 
-// BlockingListener wraps the wrapped Limiter's Listener to correctly handle releasing blocked connections
-type BlockingListener struct {
-	delegateListener core.Listener
-	c                *sync.Cond
-}
-
-func NewBlockingListener(delegateListener core.Listener) *BlockingListener {
-	mu := sync.Mutex{}
-	return &BlockingListener{
-		delegateListener: delegateListener,
-		c:                sync.NewCond(&mu),
-	}
-}
-
-func (l *BlockingListener) unblock() {
-	l.c.Broadcast()
-}
-
-// OnDropped is called to indicate the request failed and was dropped due to being rejected by an external limit or
-// hitting a timeout.  Loss based Limit implementations will likely do an aggressive reducing in limit when this
-// happens.
-func (l *BlockingListener) OnDropped() {
-	l.delegateListener.OnDropped()
-	l.unblock()
-}
-
-// OnIgnore is called to indicate the operation failed before any meaningful RTT measurement could be made and
-// should be ignored to not introduce an artificially low RTT.
-func (l *BlockingListener) OnIgnore() {
-	l.delegateListener.OnIgnore()
-	l.unblock()
-}
-
-// OnSuccess is called as a notification that the operation succeeded and internally measured latency should be
-// used as an RTT sample.
-func (l *BlockingListener) OnSuccess() {
-	l.delegateListener.OnSuccess()
-	l.unblock()
-}
-
 // timeoutWaiter will wait for a timeout or unblock signal
 type timeoutWaiter struct {
 	timeoutSig chan struct{}
@@ -178,7 +138,7 @@ func (l *BlockingLimiter) tryAcquire(ctx context.Context) (core.Listener, bool) 
 	}
 }
 
-// Acquire a token from the limiter.  Returns an Optional.empty() if the limit has been exceeded.
+// Acquire a token from the limiter.  Returns `nil, false` if the limit has been exceeded.
 // If acquired the caller must call one of the Listener methods when the operation has been completed to release
 // the count.
 //
@@ -190,7 +150,7 @@ func (l *BlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 		return nil, false
 	}
 	l.logger.Debugf("acquired, returning listener ctx=%v", ctx)
-	return &BlockingListener{
+	return &DelegateListener{
 		delegateListener: delegateListener,
 		c:                l.c,
 	}, true
