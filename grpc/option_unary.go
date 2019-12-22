@@ -129,7 +129,7 @@ func WithLimiter(limiter core.Limiter) InterceptorOption {
 	}
 }
 
-// WithClientResponseTypeClassifier sets the response classifier for the intercepted client
+// WithLimitExceededResponseClassifier sets the response classifier for the intercepted client
 func WithLimitExceededResponseClassifier(classifier LimitExceededResponseClassifier) InterceptorOption {
 	return func(cfg *interceptorConfig) {
 		cfg.limitExceededResponseClassifier = classifier

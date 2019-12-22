@@ -12,6 +12,7 @@ type DelegateListener struct {
 	c                *sync.Cond
 }
 
+// NewDelegateListener creates a new wrapped listener.
 func NewDelegateListener(delegateListener core.Listener) *DelegateListener {
 	mu := sync.Mutex{}
 	return &DelegateListener{
