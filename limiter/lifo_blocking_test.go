@@ -200,7 +200,9 @@ func TestLifoBlockingLimiter(t *testing.T) {
 		asrt.Len(waitingListeners, 10)
 		// release all
 		for _, acquired := range waitingListeners {
-			acquired.listener.OnSuccess()
+			if acquired.listener != nil {
+				acquired.listener.OnSuccess()
+			}
 		}
 	})
 }
