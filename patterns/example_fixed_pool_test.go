@@ -32,7 +32,7 @@ func ExampleFixedPool() {
 	wg := sync.WaitGroup{}
 	wg.Add(l * 3)
 	// spawn 3000 concurrent requests that would normally be too much load for the protected resource.
-	for i := 0; i <= l * 3; i++ {
+	for i := 0; i <= l*3; i++ {
 		go func(c int) {
 			defer wg.Done()
 			ctx := context.WithValue(context.Background(), JobKey, c)
@@ -44,7 +44,7 @@ func ExampleFixedPool() {
 			}
 			log.Printf("acquired lock for id=%d\n", c)
 			// do something...
-			time.Sleep(time.Millisecond*10)
+			time.Sleep(time.Millisecond * 10)
 			listener.OnSuccess()
 			log.Printf("released lock for id=%d\n", c)
 		}(i)

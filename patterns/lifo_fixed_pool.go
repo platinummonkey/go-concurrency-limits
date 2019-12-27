@@ -10,8 +10,9 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/strategy"
 )
 
+// LIFOFixedPool implements a fixed size LIFO blocking pool.
 type LIFOFixedPool struct {
-	limit int
+	limit   int
 	limiter core.Limiter
 }
 
@@ -32,13 +33,13 @@ func NewLIFOFixedPool(
 	metricRegistry core.MetricRegistry,
 ) (*FixedPool, error) {
 	if minWindowTime < 0 {
-		minWindowTime = time.Millisecond*250
+		minWindowTime = time.Millisecond * 250
 	}
 	if maxWindowTime < 0 {
-		maxWindowTime = time.Millisecond*500
+		maxWindowTime = time.Millisecond * 500
 	}
 	if minRTTThreshold < 0 {
-		minRTTThreshold = time.Millisecond*10
+		minRTTThreshold = time.Millisecond * 10
 	}
 	if windowSize <= 0 {
 		windowSize = 100

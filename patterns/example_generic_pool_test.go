@@ -11,7 +11,7 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/strategy"
 )
 
-func ExampleGenericPool() {
+func ExamplePool() {
 	var JobKey = "job_id"
 
 	l := 1000 // limit to adjustable 1000 concurrent requests.
@@ -23,9 +23,9 @@ func ExampleGenericPool() {
 	// you could of course get very complicated with this.
 	delegateLimiter, err := limiter.NewDefaultLimiter(
 		delegateLimit,
-		(time.Millisecond*250).Nanoseconds(),
-		(time.Millisecond*500).Nanoseconds(),
-		(time.Millisecond*10).Nanoseconds(),
+		(time.Millisecond * 250).Nanoseconds(),
+		(time.Millisecond * 500).Nanoseconds(),
+		(time.Millisecond * 10).Nanoseconds(),
 		100,
 		strategy.NewSimpleStrategy(l),
 		limit.BuiltinLimitLogger{},
@@ -51,7 +51,7 @@ func ExampleGenericPool() {
 	wg := sync.WaitGroup{}
 	wg.Add(l * 3)
 	// spawn 3000 concurrent requests that would normally be too much load for the protected resource.
-	for i := 0; i <= l * 3; i++ {
+	for i := 0; i <= l*3; i++ {
 		go func(c int) {
 			defer wg.Done()
 			ctx := context.WithValue(context.Background(), JobKey, c)
@@ -63,7 +63,7 @@ func ExampleGenericPool() {
 			}
 			log.Printf("acquired lock for id=%d\n", c)
 			// do something...
-			time.Sleep(time.Millisecond*10)
+			time.Sleep(time.Millisecond * 10)
 			listener.OnSuccess()
 			log.Printf("released lock for id=%d\n", c)
 		}(i)

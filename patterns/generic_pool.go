@@ -9,6 +9,7 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/limiter"
 )
 
+// Pool implements a generic blocking pool pattern.
 type Pool struct {
 	limiter core.Limiter
 }
