@@ -22,7 +22,7 @@ type MeasurementInterface interface {
 
 // SampleWindow represents the details of the current sample window
 type SampleWindow interface {
-	// StartTimeNanoseoncds returns the epoch start time in nanoseconds.
+	// StartTimeNanoseconds returns the epoch start time in nanoseconds.
 	StartTimeNanoseconds() int64
 	// CandidateRTTNanoseconds returns the candidate RTT in the sample window. This is traditionally the minimum rtt.
 	CandidateRTTNanoseconds() int64
@@ -45,14 +45,16 @@ type Limit interface {
 	EstimatedLimit() int
 
 	// NotifyOnChange will register a callback to receive notification whenever the limit is updated to a new value.
-	// @consumer the callback
+	//
+	// consumer - the callback
 	NotifyOnChange(consumer LimitChangeListener)
 
 	// OnSample the concurrency limit using a new rtt sample.
-	// @startTime in epoch nanoseconds
-	// @rtt round trip time of sample
-	// @inFlight in flight observed count during the sample
-	// @didDrop true if there was a timeout
+	//
+	// startTime - in epoch nanoseconds
+	// rtt - round trip time of sample
+	// inFlight - in flight observed count during the sample
+	// didDrop - true if there was a timeout
 	OnSample(startTime int64, rtt int64, inFlight int, didDrop bool)
 }
 
@@ -74,10 +76,10 @@ type Listener interface {
 // and must also release the returned listener when the operation completes.  Releasing the Listener
 // may trigger an update to the concurrency limit based on error rate or latency measurement.
 type Limiter interface {
-	// Acquire a token from the limiter.  Returns an Optional.empty() if the limit has been exceeded.
+	// Acquire a token from the limiter.  Returns a nil listener if the limit has been exceeded.
 	// If acquired the caller must call one of the Listener methods when the operation has been completed to release
 	// the count.
 	//
-	// context Context for the request. The context is used by advanced strategies such as LookupPartitionStrategy.
+	// context - Context for the request. The context is used by advanced strategies such as LookupPartitionStrategy.
 	Acquire(ctx context.Context) (listener Listener, ok bool)
 }
