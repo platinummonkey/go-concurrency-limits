@@ -1,5 +1,0 @@
-baseURL = "http://platinummonkey.github.io/go-concurrency-limits"
-languageCode = "en-us"
-title = "Go Concurrency Limit"
-theme = "hugo-theme-learn"
-publishDir = "docs"

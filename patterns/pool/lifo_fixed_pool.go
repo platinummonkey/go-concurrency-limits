@@ -1,4 +1,4 @@
-package patterns
+package pool
 
 import (
 	"context"
@@ -10,23 +10,24 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/strategy"
 )
 
-// FixedPool implements a fixed size blocking pool.
-type FixedPool struct {
+// LIFOFixedPool implements a fixed size LIFO blocking pool.
+type LIFOFixedPool struct {
 	limit   int
 	limiter core.Limiter
 }
 
-// NewFixedPool creates a named fixed pool resource. You can use this to guard another resource from too many concurrent
-// requests.
+// NewLIFOFixedPool creates a named LIFO fixed pool resource. You can use this to guard another resource from too many
+// concurrent requests.
 //
 // use < 0 values for defaults, but fixedLimit and name are required.
-func NewFixedPool(
+func NewLIFOFixedPool(
 	name string,
 	fixedLimit int,
 	windowSize int,
 	minWindowTime time.Duration,
 	maxWindowTime time.Duration,
 	minRTTThreshold time.Duration,
+	maxBacklog int,
 	timeout time.Duration,
 	logger limit.Logger,
 	metricRegistry core.MetricRegistry,
@@ -74,18 +75,18 @@ func NewFixedPool(
 
 	fp := &FixedPool{
 		limit:   fixedLimit,
-		limiter: limiter.NewBlockingLimiter(defaultLimiter, timeout, logger),
+		limiter: limiter.NewLifoBlockingLimiter(defaultLimiter, maxBacklog, timeout),
 	}
 	return fp, nil
 }
 
 // Limit will return the configured limit
-func (p *FixedPool) Limit() int {
+func (p *LIFOFixedPool) Limit() int {
 	return p.limit
 }
 
 // Acquire a token for the protected resource. This method will block until acquisition or the configured timeout
 // has expired.
-func (p *FixedPool) Acquire(ctx context.Context) (core.Listener, bool) {
+func (p *LIFOFixedPool) Acquire(ctx context.Context) (core.Listener, bool) {
 	return p.limiter.Acquire(ctx)
 }

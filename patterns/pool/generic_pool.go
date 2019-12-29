@@ -1,4 +1,4 @@
-package patterns
+package pool
 
 import (
 	"context"
