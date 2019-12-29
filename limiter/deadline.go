@@ -34,7 +34,7 @@ func NewDeadlineLimiter(
 		logger:   logger,
 		delegate: delegate,
 		c:        sync.NewCond(&mu),
-		deadline:  deadline,
+		deadline: deadline,
 	}
 }
 
@@ -67,7 +67,6 @@ func (l *DeadlineLimiter) tryAcquire(ctx context.Context) (listener core.Listene
 	}
 }
 
-
 // Acquire a token from the limiter.  Returns `nil, false` if the limit has been exceeded.
 // If acquired the caller must call one of the Listener methods when the operation has been completed to release
 // the count.
@@ -90,5 +89,3 @@ func (l *DeadlineLimiter) Acquire(ctx context.Context) (listener core.Listener, 
 func (l DeadlineLimiter) String() string {
 	return fmt.Sprintf("DeadlineLimiter{delegate=%v}", l.delegate)
 }
-
-

@@ -21,7 +21,6 @@ type StreamServerResponseClassifier func(
 	ctx context.Context, req interface{}, info *golangGrpc.StreamServerInfo, err error,
 ) ResponseType
 
-
 func defaultStreamClientResponseClassifier(
 	ctx context.Context,
 	req interface{},
@@ -47,15 +46,15 @@ func defaultStreamServerResponseClassifier(
 }
 
 type streamInterceptorConfig struct {
-	recvName                string
-	sendName                string
-	tags                    []string
-	recvLimiter             core.Limiter
-	sendLimiter             core.Limiter
+	recvName                            string
+	sendName                            string
+	tags                                []string
+	recvLimiter                         core.Limiter
+	sendLimiter                         core.Limiter
 	recvLimitExceededResponseClassifier LimitExceededResponseClassifier
 	sendLimitExceededResponseClassifier LimitExceededResponseClassifier
-	serverResponseClassifer StreamServerResponseClassifier
-	clientResponseClassifer StreamClientResponseClassifier
+	serverResponseClassifer             StreamServerResponseClassifier
+	clientResponseClassifer             StreamClientResponseClassifier
 }
 
 // StreamInterceptorOption represents an option that can be passed to the stream
@@ -157,4 +156,3 @@ func WithStreamServerResponseTypeClassifier(classifier StreamServerResponseClass
 		cfg.serverResponseClassifer = classifier
 	}
 }
-

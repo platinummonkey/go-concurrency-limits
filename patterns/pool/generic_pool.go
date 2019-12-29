@@ -2,6 +2,7 @@ package pool
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
@@ -25,6 +26,10 @@ func NewPool(
 	logger limit.Logger,
 	metricRegistry core.MetricRegistry,
 ) (*Pool, error) {
+	if delegateLimiter == nil {
+		return nil, fmt.Errorf("must specify a delegateLimiter")
+	}
+
 	if timeout < 0 {
 		timeout = 0
 	}

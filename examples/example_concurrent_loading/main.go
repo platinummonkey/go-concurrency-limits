@@ -22,7 +22,7 @@ type contextKey string
 const testContextKey contextKey = "jobID"
 
 type resource struct {
-	counter  *int64
+	counter *int64
 }
 
 func (r *resource) poll(ctx context.Context) (bool, error) {
@@ -112,7 +112,7 @@ func main() {
 	wg := sync.WaitGroup{}
 
 	// spin up 10*l consumers
-	wg.Add(10*l)
+	wg.Add(10 * l)
 	for i := 0; i < 10*l; i++ {
 		go func(c int) {
 			for i := 0; i < 5; i++ {

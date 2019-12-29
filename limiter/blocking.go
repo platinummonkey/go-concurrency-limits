@@ -3,11 +3,11 @@ package limiter
 import (
 	"context"
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/limit"
 	"sync"
 	"time"
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
+	"github.com/platinummonkey/go-concurrency-limits/limit"
 )
 
 const longBlockingTimeout = time.Hour * 24 * 30 * 12 * 100 // 100 years
@@ -32,24 +32,36 @@ func newTimeoutWaiter(c *sync.Cond, timeout time.Duration) *timeoutWaiter {
 
 func (w *timeoutWaiter) start() {
 	// start two routines, one runner to signal, another blocking to wait and call unblock
+	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
+		wg.Done()
 		w.run()
 	}()
 	go func() {
+		wg.Done()
 		w.c.L.Lock()
-		defer w.c.L.Unlock()
 		w.c.Wait()
+		w.c.L.Unlock()
 		w.unblock()
 	}()
+	wg.Wait()
 }
 
 func (w *timeoutWaiter) run() {
+	if w.timeout > 0 {
+		select {
+		case <-w.closerSig:
+			close(w.timeoutSig)
+			return
+		case <-time.After(w.timeout):
+			// call unblock
+			close(w.timeoutSig)
+			return
+		}
+	}
 	select {
 	case <-w.closerSig:
-		close(w.timeoutSig)
-		return
-	case <-time.After(w.timeout):
-		// call unblock
 		close(w.timeoutSig)
 		return
 	}
@@ -99,13 +111,13 @@ func NewBlockingLimiter(
 
 // tryAcquire will block when attempting to acquire a token
 func (l *BlockingLimiter) tryAcquire(ctx context.Context) (core.Listener, bool) {
-	l.c.L.Lock()
-	defer l.c.L.Unlock()
 	for {
+		l.c.L.Lock()
 		// if the deadline has passed, fail quickly
 		deadline, deadlineSet := ctx.Deadline()
 		if deadlineSet && time.Now().UTC().After(deadline) {
 			l.logger.Debugf("deadline passed ctx=%v", time.Now().UTC().After(deadline), ctx)
+			l.c.L.Unlock()
 			return nil, false
 		}
 
@@ -113,6 +125,7 @@ func (l *BlockingLimiter) tryAcquire(ctx context.Context) (core.Listener, bool) 
 		listener, ok := l.delegate.Acquire(ctx)
 		if ok && listener != nil {
 			l.logger.Debugf("delegate returned a listener ctx=%v", ctx)
+			l.c.L.Unlock()
 			return listener, true
 		}
 
@@ -130,6 +143,7 @@ func (l *BlockingLimiter) tryAcquire(ctx context.Context) (core.Listener, bool) 
 		}
 
 		// block until we timeout
+		l.c.L.Unlock()
 		timeoutWaiter := newTimeoutWaiter(l.c, timeout)
 		timeoutWaiter.start()
 		l.logger.Debugf("Blocking waiting for release or timeout ctx=%v", ctx)

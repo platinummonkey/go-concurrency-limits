@@ -53,7 +53,7 @@ func NewFixedPool(
 		metricRegistry = core.EmptyMetricRegistryInstance
 	}
 
-	limitStrategy := strategy.NewSimpleStrategy(fixedLimit)
+	limitStrategy := strategy.NewPreciseStrategy(fixedLimit)
 	defaultLimiter, err := limiter.NewDefaultLimiter(
 		limit.NewFixedLimit(
 			name,
