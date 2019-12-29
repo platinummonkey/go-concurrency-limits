@@ -10,7 +10,8 @@ import (
 )
 
 func ExampleFixedPool() {
-	var JobKey = "job_id"
+	type JobKey string
+	var JobKeyID = JobKey("job_id")
 
 	l := 1000 // limit to 1000 concurrent requests.
 	// create a new pool
@@ -35,7 +36,7 @@ func ExampleFixedPool() {
 	for i := 0; i <= l*3; i++ {
 		go func(c int) {
 			defer wg.Done()
-			ctx := context.WithValue(context.Background(), JobKey, c)
+			ctx := context.WithValue(context.Background(), JobKeyID, c)
 			// this will block until timeout or token was acquired.
 			listener, ok := pool.Acquire(ctx)
 			if !ok {

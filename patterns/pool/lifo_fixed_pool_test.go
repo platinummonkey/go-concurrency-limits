@@ -11,6 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type testKey string
+
+const testKeyID = testKey("id")
+
 func TestLIFOFixedPool(t *testing.T) {
 	asrt := assert.New(t)
 	p, err := NewLIFOFixedPool(
@@ -34,7 +38,7 @@ func TestLIFOFixedPool(t *testing.T) {
 		wg.Add(1)
 		go func(c int) {
 			defer wg.Done()
-			l, _ := p.Acquire(context.WithValue(context.Background(), "id", fmt.Sprint(c)))
+			l, _ := p.Acquire(context.WithValue(context.Background(), testKeyID, fmt.Sprint(c)))
 			log.Printf("acquired now, sleeping - %d\n", c)
 			time.Sleep(time.Millisecond * 100)
 			l.OnSuccess()

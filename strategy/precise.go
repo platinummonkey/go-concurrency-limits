@@ -48,14 +48,14 @@ func (s *PreciseStrategy) TryAcquire(ctx context.Context) (token core.StrategyTo
 		s.metricListener.AddSample(float64(s.inFlight))
 		return core.NewNotAcquiredStrategyToken(int(s.inFlight)), false
 	}
-	s.inFlight += 1
+	s.inFlight++
 	s.metricListener.AddSample(float64(s.inFlight))
 	return core.NewAcquiredStrategyToken(int(s.inFlight), s.releaseHandler), true
 }
 
 func (s *PreciseStrategy) releaseHandler() {
 	s.mu.Lock()
-	s.inFlight -= 1
+	s.inFlight--
 	s.mu.Unlock()
 }
 
