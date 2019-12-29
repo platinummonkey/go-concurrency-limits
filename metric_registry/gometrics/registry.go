@@ -1,3 +1,4 @@
+// Package gometrics implements the metric registry interface for a gometrics provider.
 package gometrics
 
 import (

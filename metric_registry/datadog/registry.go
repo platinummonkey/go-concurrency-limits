@@ -1,3 +1,4 @@
+// Package datadog implements the metric registry interface for a Datadog provider.
 package datadog
 
 import (

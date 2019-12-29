@@ -1,4 +1,4 @@
-package patterns
+package pool
 
 import (
 	"context"
@@ -7,39 +7,20 @@ import (
 	"time"
 
 	"github.com/platinummonkey/go-concurrency-limits/limit"
-	"github.com/platinummonkey/go-concurrency-limits/limiter"
-	"github.com/platinummonkey/go-concurrency-limits/strategy"
 )
 
-func ExamplePool() {
+func ExampleFixedPool() {
 	var JobKey = "job_id"
 
-	l := 1000 // limit to adjustable 1000 concurrent requests.
-	delegateLimit := limit.NewDefaultAIMLimit(
-		"aimd_limiter",
-		nil,
-	)
-	// wrap with a default limiter and simple strategy
-	// you could of course get very complicated with this.
-	delegateLimiter, err := limiter.NewDefaultLimiter(
-		delegateLimit,
-		(time.Millisecond * 250).Nanoseconds(),
-		(time.Millisecond * 500).Nanoseconds(),
-		(time.Millisecond * 10).Nanoseconds(),
-		100,
-		strategy.NewSimpleStrategy(l),
-		limit.BuiltinLimitLogger{},
-		nil,
-	)
-	if err != nil {
-		panic(err)
-	}
-
+	l := 1000 // limit to 1000 concurrent requests.
 	// create a new pool
-	pool, err := NewPool(
-		delegateLimiter,
-		false,
-		0,
+	pool, err := NewFixedPool(
+		"protected_resource_pool",
+		l,
+		100,
+		time.Millisecond*250,
+		time.Millisecond*500,
+		time.Millisecond*10,
 		time.Second,
 		limit.BuiltinLimitLogger{},
 		nil,

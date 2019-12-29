@@ -1,4 +1,4 @@
-package patterns
+package pool
 
 import (
 	"context"
@@ -9,18 +9,19 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/limit"
 )
 
-func ExampleFixedPool() {
+func ExampleLIFOFixedPool() {
 	var JobKey = "job_id"
 
 	l := 1000 // limit to 1000 concurrent requests.
 	// create a new pool
-	pool, err := NewFixedPool(
+	pool, err := NewLIFOFixedPool(
 		"protected_resource_pool",
 		l,
 		100,
 		time.Millisecond*250,
 		time.Millisecond*500,
 		time.Millisecond*10,
+		3*l,
 		time.Second,
 		limit.BuiltinLimitLogger{},
 		nil,
