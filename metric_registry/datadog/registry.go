@@ -2,6 +2,7 @@
 package datadog
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -78,10 +79,41 @@ func NewMetricRegistry(addr string, prefix string, pollFrequency time.Duration) 
 		return nil, err
 	}
 	return &MetricRegistry{
-		client:        client,
-		prefix:        prefix,
-		pollFrequency: pollFrequency,
-		stopper:       make(chan bool, 1),
+		client:              client,
+		prefix:              prefix,
+		pollFrequency:       pollFrequency,
+		stopper:             make(chan bool, 1),
+		registeredGauges:    make(map[string]*metricPoller, 0),
+		registeredListeners: make(map[string]*metricSampleListener, 0),
+	}, nil
+}
+
+// NewMetricRegistryWithClient will create a new Datadog MetricRegistry with the provided client instead.
+// This registry reports metrics to datadog using the datadog dogstatsd forwarding.
+func NewMetricRegistryWithClient(
+	client *dogstatsd.Client,
+	prefix string,
+	pollFrequency time.Duration,
+) (*MetricRegistry, error) {
+	if client == nil {
+		return nil, fmt.Errorf("client is nil")
+	}
+
+	if !strings.HasSuffix(prefix, ".") {
+		prefix = prefix + "."
+	}
+
+	if pollFrequency == 0 {
+		pollFrequency = defaultPollFrequency
+	}
+
+	return &MetricRegistry{
+		client:              client,
+		prefix:              prefix,
+		pollFrequency:       pollFrequency,
+		stopper:             make(chan bool, 1),
+		registeredGauges:    make(map[string]*metricPoller, 0),
+		registeredListeners: make(map[string]*metricSampleListener, 0),
 	}, nil
 }
 

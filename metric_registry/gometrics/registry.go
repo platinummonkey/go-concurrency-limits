@@ -87,10 +87,12 @@ func NewGoMetricsMetricRegistry(
 	}
 
 	return &MetricRegistry{
-		registry:      registry,
-		prefix:        prefix,
-		pollFrequency: pollFrequency,
-		stopper:       make(chan bool, 1),
+		registry:            registry,
+		prefix:              prefix,
+		pollFrequency:       pollFrequency,
+		stopper:             make(chan bool, 1),
+		registeredGauges:    make(map[string]*gometricsMetricPoller, 0),
+		registeredListeners: make(map[string]*metricSampleListener, 0),
 	}, nil
 }
 
