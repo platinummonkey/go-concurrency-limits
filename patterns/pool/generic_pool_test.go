@@ -30,7 +30,7 @@ func TestGenericPool(t *testing.T) {
 
 	p, err := NewPool(
 		delegateLimiter,
-		false,
+		OrderingRandom,
 		10,
 		-1,
 		nil,
