@@ -10,6 +10,16 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/limiter"
 )
 
+// Ordering define the pattern for ordering requests on Pool
+type Ordering int
+
+// The available options
+const (
+	OrderingRandom Ordering = iota
+	OrderingFIFO
+	OrderingLIFO
+)
+
 // Pool implements a generic blocking pool pattern.
 type Pool struct {
 	limiter core.Limiter
@@ -20,7 +30,7 @@ type Pool struct {
 // use < 0 values for defaults, but delegateLimiter and name are required.
 func NewPool(
 	delegateLimiter core.Limiter,
-	isLIFO bool,
+	ordering Ordering,
 	maxBacklog int,
 	timeout time.Duration,
 	logger limit.Logger,
@@ -41,11 +51,16 @@ func NewPool(
 	}
 
 	var p Pool
-	if isLIFO {
+	switch ordering {
+	case OrderingFIFO:
+		p = Pool{
+			limiter: limiter.NewFifoBlockingLimiter(delegateLimiter, maxBacklog, timeout),
+		}
+	case OrderingLIFO:
 		p = Pool{
 			limiter: limiter.NewLifoBlockingLimiter(delegateLimiter, maxBacklog, timeout),
 		}
-	} else {
+	default:
 		p = Pool{
 			limiter: limiter.NewBlockingLimiter(delegateLimiter, timeout, logger),
 		}

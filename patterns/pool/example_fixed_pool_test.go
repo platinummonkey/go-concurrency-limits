@@ -17,11 +17,13 @@ func ExampleFixedPool() {
 	// create a new pool
 	pool, err := NewFixedPool(
 		"protected_resource_pool",
+		OrderingRandom,
 		l,
 		100,
 		time.Millisecond*250,
 		time.Millisecond*500,
 		time.Millisecond*10,
+		0,
 		time.Second,
 		limit.BuiltinLimitLogger{},
 		nil,

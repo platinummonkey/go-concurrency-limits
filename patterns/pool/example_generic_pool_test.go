@@ -39,7 +39,7 @@ func ExamplePool() {
 	// create a new pool
 	pool, err := NewPool(
 		delegateLimiter,
-		false,
+		OrderingRandom,
 		0,
 		time.Second,
 		limit.BuiltinLimitLogger{},
