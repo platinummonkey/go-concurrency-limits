@@ -17,6 +17,7 @@ func createVegasLimit() *VegasLimit {
 		nil,
 		20,
 		1.0,
+		0,
 		functions.FixedQueueSizeFunc(3),
 		functions.FixedQueueSizeFunc(6),
 		nil,
@@ -92,6 +93,7 @@ func TestVegasLimit(t *testing.T) {
 			nil,
 			200,
 			0.5,
+			0,
 			nil,
 			nil,
 			nil,
@@ -125,6 +127,7 @@ func TestVegasLimit(t *testing.T) {
 			nil,
 			200,
 			-1,
+			0,
 			nil,
 			nil,
 			nil,
@@ -148,4 +151,97 @@ func TestVegasLimit(t *testing.T) {
 		l.OnSample(20, (time.Millisecond * 20).Nanoseconds(), 100, false)
 		asrt.Equal(25, l.EstimatedLimit())
 	})
+
+	t.Run("DecreaseLimitWithBufferFactor", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		l := NewVegasLimitWithRegistry(
+			"test",
+			10,
+			nil,
+			200,
+			-1,
+			1.0,
+			nil,
+			nil,
+			nil,
+			nil,
+			func(estimatedLimit float64) float64 {
+				return estimatedLimit / 2.0
+			},
+			0,
+			NoopLimitLogger{},
+			core.EmptyMetricRegistryInstance)
+
+		// Pick up first min-rtt
+		l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 10, false)
+		asrt.Equal(10, l.EstimatedLimit())
+
+		// First decrease
+		l.OnSample(10, (time.Millisecond * 50).Nanoseconds(), 11, false)
+		asrt.Equal(10, l.EstimatedLimit())
+	})
+
+	t.Run("NoChangeIfWithinThresholdsWithBuffer", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		l := NewVegasLimitWithRegistry(
+			"test",
+			10,
+			nil,
+			200,
+			-1,
+			1.0,
+			nil,
+			nil,
+			nil,
+			nil,
+			func(estimatedLimit float64) float64 {
+				return estimatedLimit / 2.0
+			},
+			0,
+			NoopLimitLogger{},
+			core.EmptyMetricRegistryInstance)
+
+		// Pick up first min-rtt
+		l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 10, false)
+		asrt.Equal(10, l.EstimatedLimit())
+
+		// First decrease
+		l.OnSample(10, (time.Millisecond * 5).Nanoseconds(), 14, false)
+		asrt.Equal(10, l.EstimatedLimit())
+	})
+
+	t.Run("PauseUpdateWhenProbeWithBuffer", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		listener := testNotifyListener{}
+		l := NewVegasLimitWithRegistry(
+			"test",
+			10,
+			nil,
+			200,
+			-1,
+			1.0,
+			nil,
+			nil,
+			nil,
+			nil,
+			func(estimatedLimit float64) float64 {
+				return estimatedLimit / 2.0
+			},
+			0,
+			NoopLimitLogger{},
+			core.EmptyMetricRegistryInstance)
+
+		l.NotifyOnChange(listener.updater())
+
+		for i := 1; i < 600; i++ {
+			l.OnSample(0, (time.Millisecond * 10).Nanoseconds(), 100, false)
+		}
+		asrt.Equal(16, listener.changes[0])
+		asrt.Equal(22, listener.changes[1])
+		asrt.Equal(28, listener.changes[2])
+	})
+
 }
