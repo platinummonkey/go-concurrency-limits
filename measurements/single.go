@@ -14,10 +14,9 @@ type SingleMeasurement struct {
 // Add a single sample and update the internal state.
 func (m *SingleMeasurement) Add(value float64) (float64, bool) {
 	m.mu.Lock()
-	oldValue := float64(m.value)
+	defer m.mu.Unlock()
 	m.value = value
-	m.mu.Unlock()
-	return oldValue, true
+	return m.value, true
 }
 
 // Get the current value.
