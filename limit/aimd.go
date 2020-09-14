@@ -83,7 +83,7 @@ func (l *AIMDLimit) notifyListeners(newLimit int) {
 // OnSample the concurrency limit using a new rtt sample.
 func (l *AIMDLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop bool) {
 	l.mu.Lock()
-	l.mu.Unlock()
+	defer l.mu.Unlock()
 
 	l.commonSampler.Sample(rtt, inFlight, didDrop)
 
