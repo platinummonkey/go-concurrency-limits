@@ -57,10 +57,11 @@ type MetricRegistry struct {
 	registeredGauges    map[string]*gometricsMetricPoller
 	registeredListeners map[string]*metricSampleListener
 
+	mu sync.Mutex
+	wg sync.WaitGroup
+
 	started bool
 	stopper chan bool
-	mu      sync.Mutex
-	wg      sync.WaitGroup
 }
 
 // NewGoMetricsMetricRegistry will create a new Datadog MetricRegistry.
