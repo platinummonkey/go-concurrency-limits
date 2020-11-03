@@ -20,10 +20,13 @@ import (
 // For traditional TCP Vegas alpha is typically 2-3 and beta is typically 4-6.  To allow for better growth and stability
 // at higher limits we set alpha=Max(3, 10% of the current limit) and beta=Max(6, 20% of the current limit).
 type VegasLimit struct {
+	initialLimit      float64
 	estimatedLimit    float64
 	maxLimit          int
 	rttNoLoad         core.MeasurementInterface
 	smoothing         float64
+	bufferFactor      float64
+	pauseUpdateUntil  int64
 	alphaFunc         func(estimatedLimit int) int
 	betaFunc          func(estimatedLimit int) int
 	thresholdFunc     func(estimatedLimit int) int
@@ -54,6 +57,7 @@ func NewDefaultVegasLimit(
 		nil,
 		-1,
 		-1,
+		0,
 		nil,
 		nil,
 		nil,
@@ -80,6 +84,7 @@ func NewDefaultVegasLimitWithLimit(
 		nil,
 		-1,
 		-1,
+		0,
 		nil,
 		nil,
 		nil,
@@ -99,6 +104,7 @@ func NewVegasLimitWithRegistry(
 	rttNoLoad core.MeasurementInterface,
 	maxConcurrency int,
 	smoothing float64,
+	bufferFactor float64,
 	alphaFunc func(estimatedLimit int) int,
 	betaFunc func(estimatedLimit int) int,
 	thresholdFunc func(estimatedLimit int) int,
@@ -123,6 +129,10 @@ func NewVegasLimitWithRegistry(
 
 	if smoothing < 0 || smoothing > 1.0 {
 		smoothing = 1.0
+	}
+
+	if bufferFactor < 0 {
+		bufferFactor = 0
 	}
 
 	if probeMultiplier <= 0 {
@@ -166,6 +176,7 @@ func NewVegasLimitWithRegistry(
 	}
 
 	l := &VegasLimit{
+		initialLimit:      float64(initialLimit),
 		estimatedLimit:    float64(initialLimit),
 		maxLimit:          maxConcurrency,
 		alphaFunc:         alphaFunc,
@@ -174,6 +185,7 @@ func NewVegasLimitWithRegistry(
 		increaseFunc:      increaseFunc,
 		decreaseFunc:      decreaseFunc,
 		smoothing:         smoothing,
+		bufferFactor:      bufferFactor,
 		probeMultipler:    probeMultiplier,
 		probeJitter:       newProbeJitter(),
 		probeCount:        0,
@@ -229,6 +241,10 @@ func (l *VegasLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop 
 		l.probeJitter = newProbeJitter()
 		l.probeCount = 0
 		l.rttNoLoad.Add(float64(rtt))
+		if l.bufferFactor > 0 {
+			l.pauseUpdateUntil = startTime + rtt + int64(float64(rtt)*(l.bufferFactor/(l.bufferFactor+1)))
+			l.estimatedLimit = math.Max(l.initialLimit, math.Ceil(l.estimatedLimit/(l.bufferFactor+1)))
+		}
 		return
 	}
 
@@ -239,6 +255,11 @@ func (l *VegasLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop 
 	}
 
 	l.rttSampleListener.AddSample(l.rttNoLoad.Get())
+
+	if l.pauseUpdateUntil != 0 && l.pauseUpdateUntil > startTime {
+		return
+	}
+
 	l.updateEstimatedLimit(startTime, rtt, inFlight, didDrop)
 }
 
@@ -247,7 +268,7 @@ func (l *VegasLimit) shouldProbe() bool {
 }
 
 func (l *VegasLimit) updateEstimatedLimit(startTime int64, rtt int64, inFlight int, didDrop bool) {
-	queueSize := int(math.Ceil(l.estimatedLimit * (1 - l.rttNoLoad.Get()/float64(rtt))))
+	queueSize := int(math.Ceil(l.estimatedLimit * (1 - (l.rttNoLoad.Get()*(l.bufferFactor+1))/float64(rtt))))
 
 	var newLimit float64
 	// Treat any drop (i.e timeout) as needing to reduce the limit

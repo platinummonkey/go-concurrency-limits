@@ -104,6 +104,7 @@ func (p *FixedPool) Limit() int {
 	return p.limit
 }
 
+// Ordering returns the Ordering for the given pool
 func (p *FixedPool) Ordering() Ordering {
 	return p.ordering
 }
