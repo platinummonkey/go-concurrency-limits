@@ -16,7 +16,7 @@ func ExamplePool() {
 	var JobKeyID = JobKey("job_id")
 
 	l := 1000 // limit to adjustable 1000 concurrent requests.
-	delegateLimit := limit.NewDefaultAIMLimit(
+	delegateLimit := limit.NewDefaultAIMDLimit(
 		"aimd_limiter",
 		nil,
 	)
