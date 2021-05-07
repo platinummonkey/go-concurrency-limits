@@ -13,7 +13,7 @@ func TestAIMDLimit(t *testing.T) {
 	t.Run("DefaultAIMD", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		l := NewDefaultAIMLimit("test", nil)
+		l := NewDefaultAIMDLimit("test", nil)
 		asrt.Equal(10, l.EstimatedLimit())
 	})
 

@@ -22,8 +22,8 @@ type AIMDLimit struct {
 	mu sync.RWMutex
 }
 
-// NewDefaultAIMLimit will create a default AIMDLimit.
-func NewDefaultAIMLimit(
+// NewDefaultAIMDLimit will create a default AIMDLimit.
+func NewDefaultAIMDLimit(
 	name string,
 	registry core.MetricRegistry,
 	tags ...string,
