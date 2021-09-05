@@ -136,8 +136,9 @@ func NewDefaultLimiterWithDefaults(
 	tags ...string,
 ) (*DefaultLimiter, error) {
 	return NewDefaultLimiter(
-		limit.NewDefaultVegasLimit(name, logger, registry, limitValue, tags...),
+		//limit.NewDefaultVegasLimit(name, logger, registry, limitValue, tags...),
 		//limit.NewDefaultGradient2Limit(name, logger, registry, tags...),
+		limit.NewDefaultAIMDLimit(name, registry, tags...),
 		//limit.NewDefaultAIMDLimit(name, registry, tags...),
 		defaultMinWindowTime,
 		defaultMaxWindowTime,
@@ -207,8 +208,17 @@ func (l *DefaultLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 
 	// Did we exceed the limit?
 	token, ok := l.strategy.TryAcquire(ctx)
-	if !ok || token == nil {
-		return nil, false
+	if !ok  {
+		if token == nil{
+			return nil, false
+		}
+		return &DefaultListener{
+			inFlight:           l.inFlight,
+			token:              token,
+			minRTTThreshold:    l.minRTTThreshold,
+			limiter:            l,
+			nextUpdateTime:     l.nextUpdateTime,
+		}, false
 	}
 //	log.Println(l.limit)
 	startTime := time.Now().UnixNano()

@@ -3,6 +3,7 @@ package limit
 import (
 	"fmt"
 	"github.com/platinummonkey/go-concurrency-limits/core"
+	"log"
 	"math"
 	"sync"
 )
@@ -28,7 +29,7 @@ func NewDefaultAIMDLimit(
 	registry core.MetricRegistry,
 	tags ...string,
 ) *AIMDLimit {
-	return NewAIMDLimit(name, 20, 0.9, 1, registry, tags...)
+	return NewAIMDLimit(name, 20, 0.7, 9, registry, tags...)
 }
 
 // NewAIMDLimit will create a new AIMDLimit.
@@ -87,7 +88,9 @@ func (l *AIMDLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop b
 
 	l.commonSampler.Sample(rtt, inFlight, didDrop)
 
+	log.Println("increase", inFlight, l.limit)
 	if didDrop {
+		log.Println("did drop")
 		l.limit = int(math.Max(1, math.Min(float64(l.limit-1), float64(int(float64(l.limit)*l.backOffRatio)))))
 		l.notifyListeners(l.limit)
 	} else if inFlight >= l.limit {

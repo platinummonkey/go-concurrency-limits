@@ -2,8 +2,10 @@ package limit
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"sync"
+	"time"
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
 	"github.com/platinummonkey/go-concurrency-limits/measurements"
@@ -76,10 +78,10 @@ func NewDefaultGradient2Limit(
 		name,
 		20,
 		200,
-		20,
-		func(limit int) int { return 4 },
+		10,
+		func(limit int) int { return 0 },
 		0.2,
-		600,
+		10,
 		logger,
 		registry,
 		tags...,
@@ -147,7 +149,7 @@ func NewGradient2Limit(
 		queueSizeFunc:           queueSizeFunc,
 		smoothing:               smoothing,
 		shortRTT:                &measurements.SingleMeasurement{},
-		longRTT:                 measurements.NewExponentialAverageMeasurement(longWindow, 10),
+		longRTT:                 measurements.NewExponentialAverageMeasurement(longWindow, 5),
 		longRTTSampleListener:   registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricMinRTT, name), tags...),
 		shortRTTSampleListener:  registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricWindowMinRTT, name), tags...),
 		queueSizeSampleListener: registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricWindowQueueSize, name), tags...),
@@ -198,6 +200,7 @@ func (l *Gradient2Limit) OnSample(startTime int64, rtt int64, inFlight int, didD
 	l.longRTTSampleListener.AddSample(longRTT)
 	l.queueSizeSampleListener.AddSample(float64(queueSize))
 
+	log.Println("shortRTT :", shortRTT/float64(time.Millisecond), " longRTT :", longRTT/float64(time.Millisecond))
 	// If the long RTT is substantially larger than the short RTT then reduce the long RTT measurement.
 	// This can happen when latency returns to normal after a prolonged prior of excessive load.  Reducing the
 	// long RTT without waiting for the exponential smoothing helps bring the system back to steady state.
@@ -208,6 +211,7 @@ func (l *Gradient2Limit) OnSample(startTime int64, rtt int64, inFlight int, didD
 	}
 
 	// Don't grow the limit if we are app limited
+	log.Println("check",inFlight, l.estimatedLimit/2)
 	if float64(inFlight) < l.estimatedLimit/2 {
 		return
 	}
@@ -221,6 +225,7 @@ func (l *Gradient2Limit) OnSample(startTime int64, rtt int64, inFlight int, didD
 	newLimit = l.estimatedLimit*(1-l.smoothing) + newLimit*l.smoothing
 	newLimit = math.Max(float64(l.minLimit), math.Min(float64(l.maxLimit), newLimit))
 
+	log.Println(gradient, newLimit)
 	if newLimit != l.estimatedLimit && l.logger.IsDebugEnabled() {
 		l.logger.Debugf("new limit=%0.2f, shortRTT=%d ms, longRTT=%d ms, queueSize=%d, gradient=%0.2f",
 			newLimit, shortRTT/1e6, longRTT/1e6, queueSize, gradient)

@@ -1,6 +1,7 @@
 package functions
 
 import (
+	"log"
 	"math"
 )
 
@@ -23,6 +24,7 @@ func Log10RootFunction(baseline int) func(estimatedLimit int) int {
 // operation can be slow.
 func Log10RootFloatFunction(baseline float64) func(estimatedLimit float64) float64 {
 	return func(estimatedLimit float64) float64 {
+		log.Println("Logarithm : ",estimatedLimit, " -> " ,math.Log10(estimatedLimit))
 		if int(estimatedLimit) < len(log10RootLookup) {
 			return baseline + float64(log10RootLookup[int(estimatedLimit)])
 		}
