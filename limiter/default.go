@@ -17,7 +17,7 @@ const (
 	defaultMinWindowTime   = int64(1e9) // (1 s) nanoseconds
 	defaultMaxWindowTime   = int64(1e9) // (1 s) nanoseconds
 	defaultMinRTTThreshold = int64(1e5) // (100 µs) nanoseconds
-	defaultWindowSize      = int(100)   // Minimum observed samples to filter out sample windows with not enough significant samples
+	defaultWindowSize      = int(10)   // Minimum observed samples to filter out sample windows with not enough significant samples
 )
 
 // DefaultListener for
@@ -39,6 +39,8 @@ func (l *DefaultListener) OnSuccess() {
 	endTime := time.Now().UnixNano()
 	rtt := endTime - l.startTime
 
+	//log.Println("rtt is ",rtt / int64(time.Millisecond))
+
 	if rtt < l.minRTTThreshold {
 		return
 	}
@@ -48,11 +50,15 @@ func (l *DefaultListener) OnSuccess() {
 		},
 	)
 
+	//log.Printf("POBBAL Window size : %d, Sample size : %d",  l.limiter.windowSize, current.SampleCount())
+
 	if endTime > l.nextUpdateTime {
+		//log.Println("SSObal")
 		// double check just to be sure
 		l.limiter.mu.Lock()
 		defer l.limiter.mu.Unlock()
 		if endTime > l.limiter.nextUpdateTime {
+			//log.Println("ZZObal", current.SampleCount()," " , l.limiter.windowSize)
 			if l.limiter.isWindowReady(current) {
 				l.limiter.sample = measurements.NewImmutableSampleWindow(
 					-1,
@@ -124,12 +130,15 @@ type DefaultLimiter struct {
 func NewDefaultLimiterWithDefaults(
 	name string,
 	strategy core.Strategy,
+	limitValue int,
 	logger limit.Logger,
 	registry core.MetricRegistry,
 	tags ...string,
 ) (*DefaultLimiter, error) {
 	return NewDefaultLimiter(
-		limit.NewDefaultVegasLimit(name, logger, registry, tags...),
+		limit.NewDefaultVegasLimit(name, logger, registry, limitValue, tags...),
+		//limit.NewDefaultGradient2Limit(name, logger, registry, tags...),
+		//limit.NewDefaultAIMDLimit(name, registry, tags...),
 		defaultMinWindowTime,
 		defaultMaxWindowTime,
 		defaultMinRTTThreshold,
@@ -201,7 +210,7 @@ func (l *DefaultLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	if !ok || token == nil {
 		return nil, false
 	}
-
+//	log.Println(l.limit)
 	startTime := time.Now().UnixNano()
 	currentMaxInFlight := atomic.AddInt64(l.inFlight, 1)
 	return &DefaultListener{

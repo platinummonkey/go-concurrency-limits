@@ -29,12 +29,13 @@ func (r *resource) poll(ctx context.Context) (bool, error) {
 	id := ctx.Value(testContextKey).(int)
 	log.Printf("request started for id=%d\n", id)
 	if !r.limiter.Allow() {
-		time.Sleep(time.Millisecond * 10)
+		time.Sleep(time.Millisecond * 100)
 		return false, fmt.Errorf("limit exceeded for id=%d", id)
 	}
 	// sleep some time
-	time.Sleep(time.Millisecond * time.Duration(rand.Intn(90)+10))
-	log.Printf("request succeeded for id=%d\n", id)
+	latency := time.Millisecond * time.Duration(rand.Intn(20)+0)
+	time.Sleep(latency)
+	log.Printf("request succeeded for id=%d, latency : %d ms\n", id, latency/time.Millisecond)
 	return true, nil
 }
 
@@ -100,6 +101,7 @@ func main() {
 			log.Printf("Waiting for goroutines to finish...")
 			wg.Wait()
 			return
+
 		case <-ticker.C:
 			// make a few requests
 			wg.Add(5)

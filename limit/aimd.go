@@ -28,7 +28,7 @@ func NewDefaultAIMDLimit(
 	registry core.MetricRegistry,
 	tags ...string,
 ) *AIMDLimit {
-	return NewAIMDLimit(name, 10, 0.9, 1, registry, tags...)
+	return NewAIMDLimit(name, 20, 0.9, 1, registry, tags...)
 }
 
 // NewAIMDLimit will create a new AIMDLimit.
