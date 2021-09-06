@@ -25,6 +25,7 @@ func TestDefaultListener(t *testing.T) {
 	limiter, _ := NewDefaultLimiterWithDefaults(
 		"",
 		strategy.NewSimpleStrategy(10),
+		10,
 		limit.NoopLimitLogger{},
 		core.EmptyMetricRegistryInstance,
 	)
@@ -61,7 +62,7 @@ func TestDefaultLimiter(t *testing.T) {
 	t.Run("NewDefaultLimiterWithDefaults", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
-		l, err := NewDefaultLimiterWithDefaults("", strategy.NewSimpleStrategy(10), limit.NoopLimitLogger{}, core.EmptyMetricRegistryInstance)
+		l, err := NewDefaultLimiterWithDefaults("", strategy.NewSimpleStrategy(10), 10, limit.NoopLimitLogger{}, core.EmptyMetricRegistryInstance)
 		asrt.NoError(err)
 		asrt.NotNil(l)
 		asrt.Equal(20, l.EstimatedLimit())

@@ -54,7 +54,7 @@ timestamp color 1
 timestamp rot 0
 timestamp font 0
 timestamp char size 1.000000
-timestamp def "Sun Sep  5 17:57:22 2021"
+timestamp def "Mon Sep  6 17:07:49 2021"
 r0 off
 link r0 to g0
 r0 type above
@@ -218,7 +218,13 @@ with g0
     yaxis  ticklabel font 0
     yaxis  ticklabel color 1
     yaxis  tick place both
-    yaxis  tick spec type none
+    yaxis  tick spec type ticks
+    yaxis  tick spec 5
+    yaxis  tick major 0, 0
+    yaxis  tick major 1, 5
+    yaxis  tick major 2, 10
+    yaxis  tick major 3, 15
+    yaxis  tick major 4, 20
     altxaxis  off
     altyaxis  off
     legend on

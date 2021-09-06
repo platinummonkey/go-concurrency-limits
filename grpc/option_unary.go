@@ -99,6 +99,7 @@ func defaults(cfg *interceptorConfig) {
 	cfg.limiter, _ = limiter.NewDefaultLimiterWithDefaults(
 		name,
 		strategy.NewSimpleStrategy(1000),
+		1000,
 		limit.NoopLimitLogger{},
 		core.EmptyMetricRegistryInstance,
 		tags...,

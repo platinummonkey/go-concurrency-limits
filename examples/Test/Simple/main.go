@@ -92,12 +92,12 @@ func writeSliceAtomic(latency int, latencySlice *[]int){
 }
 
 
-func (tx *transmitter) transmit(ctx context.Context, timeSlot int, SucNum *int32, FailNum *int32, latencySlice *[]int) (bool, error) {
+func (tx *transmitter) transmit(ctx context.Context, timeSlot int, SucNum *int32, FailNum *int32, latencySlice *[]int, serverTest bool, AIMD bool) (bool, error) {
 	id := ctx.Value(uint8(1)).(int)
 
-	//latency := time.Millisecond * time.Duration( rand.Intn(10) + 10*timeSlot  )
+	latency := time.Millisecond * time.Duration( rand.Intn(10) + 10*timeSlot  )
 	//latency := time.Millisecond * time.Duration(rand.Intn(10) )
-	latency := time.Millisecond * time.Duration(100+rand.Intn(10)  - 10*timeSlot  )
+	//latency := time.Millisecond * time.Duration(100+rand.Intn(10)  - 10*timeSlot  )
 	writeSliceAtomic(int(latency/time.Millisecond), latencySlice)
 	token, ok := tx.testLimiter.Acquire(ctx)
 
@@ -109,14 +109,23 @@ func (tx *transmitter) transmit(ctx context.Context, timeSlot int, SucNum *int32
 		return false, fmt.Errorf("request failed for id=%d\n", id)
 	}
 
-	/*
-	if atomic.LoadInt32(&serverC[timeSlot-1]) <= 0{
-		atomic.AddInt32(FailNum, 1)
-		token.OnDropped()
-		return false, fmt.Errorf("request failed for id=%d\n", id)
+	if AIMD{
+		if int(latency/time.Millisecond) >= 20 {
+			time.Sleep(time.Millisecond * 20)
+			token.OnDropped()
+			return false, fmt.Errorf("Time out dropped\n")
+		}
 	}
-	atomic.AddInt32(&serverC[timeSlot-1], -1)
-*/
+
+	if serverTest{
+		if atomic.LoadInt32(&serverC[timeSlot-1]) <= 0{
+			atomic.AddInt32(FailNum, 1)
+			token.OnDropped()
+			return false, fmt.Errorf("request failed for id=%d\n", id)
+		}
+		atomic.AddInt32(&serverC[timeSlot-1], -1)
+	}
+
 	atomic.AddInt32(SucNum, 1)
 	time.Sleep(latency)
 	token.OnSuccess()
@@ -127,9 +136,10 @@ func (tx *transmitter) transmit(ctx context.Context, timeSlot int, SucNum *int32
 func main() {
 	fmt.Println("Simple Test Setting")
 
-	ReqScale := 50
+	ReqScale := 25
 	TimeDuration := 10500
 	LimitValue := 20
+	ServerTestFlag := false
 
 	for i:=0; i<TimeDuration/1000; i++{
 		_, cosValue := math.Sincos(float64(2)*math.Pi * float64(i)/float64(TimeDuration/1000))
@@ -138,10 +148,19 @@ func main() {
 	}
 
 	limitStrategy := strategy.NewSimpleStrategy(LimitValue)
-	testDefaultlimiter, err := limiter.NewDefaultLimiterWithDefaults(
+	/*testDefaultlimiter, err := limiter.NewDefaultLimiterWithDefaults(
 		"Simple_Test_Limiter",
 		limitStrategy,
 		limitStrategy.GetLimit(),
+		limit.BuiltinLimitLogger{},
+		core.EmptyMetricRegistryInstance,
+	)*/
+	testDefaultlimiter, err := limiter.NewDefaultLimiterWithAIMD(
+		"Simple_Test_Limiter",
+		limitStrategy,
+		limitStrategy.GetLimit(),
+		0.9,
+		1,
 		limit.BuiltinLimitLogger{},
 		core.EmptyMetricRegistryInstance,
 	)
@@ -192,13 +211,12 @@ func main() {
 					defer wg.Done()
 					//log.Printf("%dth request is started", i)
 					ctx := context.WithValue(context.Background(), uint8(1), int(j)+1)
-					testTransmitter.transmit(ctx, timeSlot, &SucNum, &FailNum, &LatencySlice)
+					testTransmitter.transmit(ctx, timeSlot, &SucNum, &FailNum, &LatencySlice, ServerTestFlag, true)
 				}(reqCounter)
 				atomic.AddInt32(&reqCounter,1)
 			}
 			wg.Wait()
 			//log.Println("After start server C", timeSlot, " token :",  atomic.LoadInt32(&serverC[timeSlot-1]) )
-
 
 
 			log.Print("Elapsed Time : ", time.Since(startTime).Seconds())
@@ -222,6 +240,7 @@ func main() {
 			SucNum = 0
 			FailNum = 0
 			timeSlot++
+			log.Println()
 		}
 		//reqCounter++
 

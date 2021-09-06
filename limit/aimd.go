@@ -32,6 +32,17 @@ func NewDefaultAIMDLimit(
 	return NewAIMDLimit(name, 20, 0.7, 9, registry, tags...)
 }
 
+func NewDefaultAIMDLimitWithParm(
+	name string,
+	registry core.MetricRegistry,
+	initialLimit int,
+	backoffRatio float64,
+	increaseBy int,
+	tags ...string,
+) *AIMDLimit {
+	return NewAIMDLimit(name, initialLimit, backoffRatio, increaseBy, registry, tags...)
+}
+
 // NewAIMDLimit will create a new AIMDLimit.
 func NewAIMDLimit(
 	name string,

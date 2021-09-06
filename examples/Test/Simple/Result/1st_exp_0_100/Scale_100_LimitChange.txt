@@ -8,4 +8,3 @@
 8	14
 9	13
 10	12
-/Users/user/IdeaProjects/go-concurrency-limits/examples/Test/Simple/Result/1st_exp/Scale_50_LimitChange.txt

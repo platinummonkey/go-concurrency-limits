@@ -74,6 +74,7 @@ func main() {
 	defaultLimiter, err := limiter.NewDefaultLimiterWithDefaults(
 		"example_blocking_limit",
 		limitStrategy,
+		10,
 		logger,
 		core.EmptyMetricRegistryInstance,
 	)

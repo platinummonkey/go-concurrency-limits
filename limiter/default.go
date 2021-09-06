@@ -51,7 +51,6 @@ func (l *DefaultListener) OnSuccess() {
 	)
 
 	//log.Printf("POBBAL Window size : %d, Sample size : %d",  l.limiter.windowSize, current.SampleCount())
-
 	if endTime > l.nextUpdateTime {
 		//log.Println("SSObal")
 		// double check just to be sure
@@ -60,6 +59,7 @@ func (l *DefaultListener) OnSuccess() {
 		if endTime > l.limiter.nextUpdateTime {
 			//log.Println("ZZObal", current.SampleCount()," " , l.limiter.windowSize)
 			if l.limiter.isWindowReady(current) {
+				//log.Println("ZZObal", current.SampleCount()," " , l.limiter.windowSize)
 				l.limiter.sample = measurements.NewImmutableSampleWindow(
 					-1,
 					0,
@@ -136,10 +136,30 @@ func NewDefaultLimiterWithDefaults(
 	tags ...string,
 ) (*DefaultLimiter, error) {
 	return NewDefaultLimiter(
-		limit.NewDefaultVegasLimit(name, logger, registry, limitValue, tags...),
-		//limit.NewDefaultGradient2Limit(name, logger, registry, tags...),
-		//limit.NewDefaultAIMDLimit(name, registry, tags...),
-		//limit.NewDefaultAIMDLimit(name, registry, tags...),
+		//limit.NewDefaultVegasLimit(name, logger, registry, limitValue, tags...),
+		limit.NewDefaultGradient2Limit(name, logger, registry, tags...),
+		defaultMinWindowTime,
+		defaultMaxWindowTime,
+		defaultMinRTTThreshold,
+		defaultWindowSize,
+		strategy,
+		logger,
+		registry,
+	)
+}
+
+func NewDefaultLimiterWithAIMD(
+	name string,
+	strategy core.Strategy,
+	initalLimit int,
+	backoffRatio float64,
+	increaseBy int,
+	logger limit.Logger,
+	registry core.MetricRegistry,
+	tags ...string,
+) (*DefaultLimiter, error) {
+	return NewDefaultLimiter(
+		limit.NewDefaultAIMDLimitWithParm(name, registry, initalLimit, backoffRatio, increaseBy, tags...),
 		defaultMinWindowTime,
 		defaultMaxWindowTime,
 		defaultMinRTTThreshold,
@@ -208,18 +228,10 @@ func (l *DefaultLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 
 	// Did we exceed the limit?
 	token, ok := l.strategy.TryAcquire(ctx)
-	if !ok  {
-		if token == nil{
-			return nil, false
-		}
-		return &DefaultListener{
-			inFlight:           l.inFlight,
-			token:              token,
-			minRTTThreshold:    l.minRTTThreshold,
-			limiter:            l,
-			nextUpdateTime:     l.nextUpdateTime,
-		}, false
+	if !ok || token == nil{
+		return nil, false
 	}
+
 //	log.Println(l.limit)
 	startTime := time.Now().UnixNano()
 	currentMaxInFlight := atomic.AddInt64(l.inFlight, 1)
