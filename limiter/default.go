@@ -136,9 +136,9 @@ func NewDefaultLimiterWithDefaults(
 	tags ...string,
 ) (*DefaultLimiter, error) {
 	return NewDefaultLimiter(
-		//limit.NewDefaultVegasLimit(name, logger, registry, limitValue, tags...),
+		limit.NewDefaultVegasLimit(name, logger, registry, limitValue, tags...),
 		//limit.NewDefaultGradient2Limit(name, logger, registry, tags...),
-		limit.NewDefaultAIMDLimit(name, registry, tags...),
+		//limit.NewDefaultAIMDLimit(name, registry, tags...),
 		//limit.NewDefaultAIMDLimit(name, registry, tags...),
 		defaultMinWindowTime,
 		defaultMaxWindowTime,
