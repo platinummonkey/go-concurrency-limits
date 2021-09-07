@@ -3,6 +3,7 @@ package measurements
 import (
 	"fmt"
 	"math"
+	"sync"
 	"time"
 )
 
@@ -52,6 +53,10 @@ func NewImmutableSampleWindow(
 
 // AddSample will create a new immutable sample for which to use.
 func (s *ImmutableSampleWindow) AddSample(startTime int64, rtt int64, maxInFlight int) *ImmutableSampleWindow {
+	var mutex = &sync.Mutex{}
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	minRTT := s.minRTT
 	if rtt < s.minRTT {
 		minRTT = rtt

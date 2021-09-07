@@ -74,6 +74,7 @@ func main() {
 	externalResourceLimiter, err := limiter.NewDefaultLimiterWithDefaults(
 		"example_single_limit",
 		limitStrategy,
+		10,
 		limit.BuiltinLimitLogger{},
 		core.EmptyMetricRegistryInstance,
 	)

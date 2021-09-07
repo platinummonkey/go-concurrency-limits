@@ -99,9 +99,9 @@ func (l *AIMDLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop b
 
 	l.commonSampler.Sample(rtt, inFlight, didDrop)
 
-	log.Println("increase", inFlight, l.limit)
+	log.Println("increase check, inFlight : ", inFlight," l.limit : " ,l.limit)
 	if didDrop {
-		log.Println("did drop")
+		log.Println("didDrop")
 		l.limit = int(math.Max(1, math.Min(float64(l.limit-1), float64(int(float64(l.limit)*l.backOffRatio)))))
 		l.notifyListeners(l.limit)
 	} else if inFlight >= l.limit {
