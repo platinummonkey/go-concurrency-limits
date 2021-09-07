@@ -18,6 +18,7 @@ const (
 	defaultMaxWindowTime   = int64(1e9) // (1 s) nanoseconds
 	defaultMinRTTThreshold = int64(1e5) // (100 µs) nanoseconds
 	defaultWindowSize      = int(10)    // Minimum observed samples to filter out sample windows with not enough significant samples
+	usingWindow            = false
 )
 
 // DefaultListener for
@@ -33,9 +34,7 @@ type DefaultListener struct {
 
 // OnSuccess is called as a notification that the operation succeeded and internally measured latency should be
 // used as an RTT sample.
-func (l *DefaultListener) OnSuccess() {
-	atomic.AddInt64(l.inFlight, -1)
-	l.token.Release()
+func (l *DefaultListener) OnSampleUsingWindow() {
 	endTime := time.Now().UnixNano()
 	rtt := endTime - l.startTime
 
@@ -48,18 +47,12 @@ func (l *DefaultListener) OnSuccess() {
 		},
 	)
 
-	//log.Println("min rtt is ", current.CandidateRTTNanoseconds()/ int64(time.Millisecond))
-	//log.Printf("POBBAL Window size : %d, Sample size : %d",  l.limiter.windowSize, current.SampleCount())
-	//log.Println("d", time.Unix(0,endTime), time.Unix(0,l.nextUpdateTime))
 	if endTime > l.nextUpdateTime {
-		//log.Println("SSObal")
 		// double check just to be sure
 		l.limiter.mu.Lock()
 		defer l.limiter.mu.Unlock()
 		if endTime > l.limiter.nextUpdateTime {
-			//log.Println("ZZObal", current.SampleCount()," " , l.limiter.windowSize)
 			if l.limiter.isWindowReady(current) {
-				//log.Println("ZZObal", current.SampleCount()," " , l.limiter.windowSize)
 				l.limiter.sample = measurements.NewImmutableSampleWindow(
 					-1,
 					0,
@@ -68,7 +61,6 @@ func (l *DefaultListener) OnSuccess() {
 					0,
 					false,
 				)
-
 				minWindowTime := current.CandidateRTTNanoseconds() * 2
 				if l.limiter.minWindowTime > minWindowTime {
 					minWindowTime = l.limiter.minWindowTime
@@ -77,9 +69,7 @@ func (l *DefaultListener) OnSuccess() {
 				if minWindowTime < minVal {
 					minVal = minWindowTime
 				}
-				//log.Println("nextUpdateTime update")
 				l.limiter.nextUpdateTime = endTime + minVal
-
 				l.limiter.limit.OnSample(
 					0,
 					current.CandidateRTTNanoseconds(),
@@ -89,6 +79,18 @@ func (l *DefaultListener) OnSuccess() {
 				l.limiter.strategy.SetLimit(l.limiter.limit.EstimatedLimit())
 			}
 		}
+	}
+}
+
+func (l *DefaultListener) OnSuccess() {
+	l.token.Release()
+	if usingWindow {
+		atomic.AddInt64(l.inFlight, -1)
+		l.OnSampleUsingWindow()
+	} else {
+		l.limiter.limit.OnSample(0, time.Now().UnixNano()-l.startTime, int(*l.inFlight), false)
+		l.limiter.strategy.SetLimit(l.limiter.limit.EstimatedLimit())
+		atomic.AddInt64(l.inFlight, -1)
 	}
 }
 
@@ -103,66 +105,18 @@ func (l *DefaultListener) OnIgnore() {
 // hitting a timeout.  Loss based Limit implementations will likely do an aggressive reducing in limit when this
 // happens.
 func (l *DefaultListener) OnDropped() {
-	atomic.AddInt64(l.inFlight, -1)
 	l.token.Release()
-	l.limiter.updateAndGetSample(func(window measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow {
-		return *(window.AddDroppedSample(-1, int(l.currentMaxInFlight)))
-	})
-	endTime := time.Now().UnixNano()
-	rtt := endTime - l.startTime
-
-	if rtt < l.minRTTThreshold {
-		return
+	if usingWindow {
+		l.limiter.updateAndGetSample(func(window measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow {
+			return *(window.AddDroppedSample(-1, int(l.currentMaxInFlight)))
+		})
+		atomic.AddInt64(l.inFlight, -1)
+		l.OnSampleUsingWindow()
+	} else {
+		l.limiter.limit.OnSample(0, time.Now().UnixNano()-l.startTime, int(*l.inFlight), true)
+		l.limiter.strategy.SetLimit(l.limiter.limit.EstimatedLimit())
+		atomic.AddInt64(l.inFlight, -1)
 	}
-	_, current := l.limiter.updateAndGetSample(
-		func(window measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow {
-			return *(window.AddSample(-1, rtt, int(l.currentMaxInFlight)))
-		},
-	)
-
-	//log.Println("min rtt is ", current.CandidateRTTNanoseconds()/ int64(time.Millisecond))
-	//log.Printf("POBBAL Window size : %d, Sample size : %d",  l.limiter.windowSize, current.SampleCount())
-	//log.Println(time.Unix(0,endTime), time.Unix(0,l.nextUpdateTime))
-	if endTime > l.nextUpdateTime {
-		//log.Println("SSObal")
-		// double check just to be sure
-		l.limiter.mu.Lock()
-		defer l.limiter.mu.Unlock()
-		if endTime > l.limiter.nextUpdateTime {
-			//log.Println("ZZObal", current.SampleCount()," " , l.limiter.windowSize)
-			if l.limiter.isWindowReady(current) {
-				//log.Println("ZZObal", current.SampleCount()," " , l.limiter.windowSize)
-				l.limiter.sample = measurements.NewImmutableSampleWindow(
-					-1,
-					0,
-					0,
-					0,
-					0,
-					false,
-				)
-
-				minWindowTime := current.CandidateRTTNanoseconds() * 2
-				if l.limiter.minWindowTime > minWindowTime {
-					minWindowTime = l.limiter.minWindowTime
-				}
-				minVal := l.limiter.maxWindowTime
-				if minWindowTime < minVal {
-					minVal = minWindowTime
-				}
-
-				l.limiter.nextUpdateTime = endTime + minVal
-
-				l.limiter.limit.OnSample(
-					0,
-					current.CandidateRTTNanoseconds(),
-					current.MaxInFlight(),
-					current.DidDrop(),
-				)
-				l.limiter.strategy.SetLimit(l.limiter.limit.EstimatedLimit())
-			}
-		}
-	}
-
 }
 
 // DefaultLimiter is a Limiter that combines a plugable limit algorithm and enforcement strategy to enforce concurrency
