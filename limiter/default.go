@@ -17,7 +17,7 @@ const (
 	defaultMinWindowTime   = int64(1e9) // (1 s) nanoseconds
 	defaultMaxWindowTime   = int64(1e9) // (1 s) nanoseconds
 	defaultMinRTTThreshold = int64(1e5) // (100 µs) nanoseconds
-	defaultWindowSize      = int(10)   // Minimum observed samples to filter out sample windows with not enough significant samples
+	defaultWindowSize      = int(10)    // Minimum observed samples to filter out sample windows with not enough significant samples
 )
 
 // DefaultListener for
@@ -285,14 +285,14 @@ func (l *DefaultLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 
 	// Did we exceed the limit?
 	token, ok := l.strategy.TryAcquire(ctx)
-	if !ok || token == nil{
+	if !ok || token == nil {
 		return nil, false
 	}
 
-//	log.Println(l.limit)
+	//	log.Println(l.limit)
 	startTime := time.Now().UnixNano()
 	currentMaxInFlight := atomic.AddInt64(l.inFlight, 1)
-//	log.Println("limiter", time.Unix(0,l.nextUpdateTime))
+	//	log.Println("limiter", time.Unix(0,l.nextUpdateTime))
 	return &DefaultListener{
 		currentMaxInFlight: currentMaxInFlight,
 		inFlight:           l.inFlight,
