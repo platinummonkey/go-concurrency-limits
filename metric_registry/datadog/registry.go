@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	dogstatsd "github.com/DataDog/datadog-go/statsd"
+	dogstatsd "github.com/DataDog/datadog-go/v5/statsd"
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
 )
