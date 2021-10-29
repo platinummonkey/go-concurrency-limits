@@ -106,12 +106,13 @@ func (q *lifoQueue) remove(id uint64) {
 				q.top.next = nil
 				q.top.prev = nil
 				q.top = next
-				q.top.id--
 				q.size--
 				return
 			}
-			next.prev = prev
-			prev.next = cur.next
+			if next != nil {
+				next.prev = nil
+			}
+			prev.next = next
 			q.size--
 			return
 
