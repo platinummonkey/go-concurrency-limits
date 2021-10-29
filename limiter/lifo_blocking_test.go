@@ -123,6 +123,14 @@ func TestLifoQueue_Remove(t *testing.T) {
 	}
 	asrt.Equal(uint64(0), q.len())
 	asrt.Equal(7, len(seenElements))
+
+	q = lifoQueue{}
+	ctx = context.WithValue(context.Background(), testLifoQueueContextKey(1), 1)
+	q.push(ctx)
+
+	// Remove very last item leaving queue empty
+	q.remove(1)
+	asrt.Equal(uint64(0), q.len())
 }
 
 func TestLifoBlockingListener(t *testing.T) {
