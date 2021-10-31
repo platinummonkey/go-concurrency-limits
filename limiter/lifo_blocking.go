@@ -67,15 +67,16 @@ func (q *lifoQueue) len() uint64 {
 func (q *lifoQueue) push(ctx context.Context) (func(), chan core.Listener) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
-	releaseChan := make(chan core.Listener, 1)
+	releaseChan := make(chan core.Listener)
+
 	if q.top != nil {
 		q.top = &lifoElement{next: q.top, ctx: ctx, releaseChan: releaseChan}
 		q.top.next.prev = q.top
-		q.size++
-		return q.evictionFunc(q.top), releaseChan
+	} else {
+		q.top = &lifoElement{ctx: ctx, releaseChan: releaseChan}
 	}
+
 	q.size++
-	q.top = &lifoElement{ctx: ctx, releaseChan: releaseChan}
 	return q.evictionFunc(q.top), releaseChan
 }
 
