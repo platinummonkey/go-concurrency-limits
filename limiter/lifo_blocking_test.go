@@ -82,6 +82,57 @@ func TestLifoQueue(t *testing.T) {
 	}
 }
 
+func TestLifoQueue_Remove(t *testing.T) {
+	t.Parallel()
+	asrt := assert.New(t)
+	q := lifoQueue{}
+
+	asrt.Equal(uint64(0), q.len())
+	size, ctx := q.peek()
+	asrt.Equal(uint64(0), size)
+	asrt.Nil(ctx)
+	asrt.Nil(q.pop())
+
+	for i := 1; i <= 10; i++ {
+		ctx := context.WithValue(context.Background(), testLifoQueueContextKey(i), i)
+		q.push(ctx)
+	}
+
+	// remove last
+	q.remove(1)
+	asrt.Equal(uint64(9), q.len())
+
+	// remove first
+	q.remove(q.len())
+	asrt.Equal(uint64(8), q.len())
+
+	// remove middle
+	q.remove(q.len() / 2)
+	asrt.Equal(uint64(7), q.len())
+
+	seenElements := make(map[uint64]struct{}, q.len())
+	var element *lifoElement
+	for {
+		element = q.pop()
+		if element == nil {
+			break
+		}
+		_, seen := seenElements[element.id]
+		asrt.False(seen, "no duplicate element ids allowed")
+		seenElements[element.id] = struct{}{}
+	}
+	asrt.Equal(uint64(0), q.len())
+	asrt.Equal(7, len(seenElements))
+
+	q = lifoQueue{}
+	ctx = context.WithValue(context.Background(), testLifoQueueContextKey(1), 1)
+	q.push(ctx)
+
+	// Remove very last item leaving queue empty
+	q.remove(1)
+	asrt.Equal(uint64(0), q.len())
+}
+
 func TestLifoBlockingListener(t *testing.T) {
 	t.Parallel()
 	delegateLimiter, _ := NewDefaultLimiterWithDefaults(
