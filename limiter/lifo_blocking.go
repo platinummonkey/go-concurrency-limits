@@ -19,8 +19,10 @@ type lifoElement struct {
 func (e *lifoElement) setListener(listener core.Listener) bool {
 	select {
 	case e.releaseChan <- listener:
+		close(e.releaseChan)
 		return true
 	default:
+		// timeout has expired
 		return false
 	}
 }
@@ -218,7 +220,6 @@ func (l *LifoBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 	// Create a holder for a listener and block until a listener is released by another
 	// operation.  Holders will be unblocked in LIFO order
 	evict, eventReleaseChan := l.backlog.push(ctx)
-	defer close(eventReleaseChan)
 
 	select {
 	case listener = <-eventReleaseChan:

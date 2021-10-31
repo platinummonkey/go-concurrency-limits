@@ -64,7 +64,7 @@ func TestLifoQueue(t *testing.T) {
 
 }
 
-func TestLifoQueue_Remove(t *testing.T) {
+func TestLifoQueue_Evict(t *testing.T) {
 	t.Parallel()
 	asrt := assert.New(t)
 	q := lifoQueue{}
