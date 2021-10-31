@@ -91,6 +91,8 @@ func (q *lifoQueue) pop() *lifoElement {
 		}
 		q.top.next = nil
 		q.top.prev = nil
+		q.top.evicted = true
+
 		q.top = next
 		q.size--
 		return &prev
