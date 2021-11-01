@@ -1,0 +1,46 @@
+name: CI
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
+
+jobs:
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    # Setup Go
+    - name: Setup Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.17.0' # The Go version to download (if necessary) and use.
+
+    # Install all the dependencies
+    - name: Install dependencies
+      run: |
+        go version
+        go mod download
+        go install golang.org/x/lint/golint@latest
+        go install golang.org/x/tools/cmd/cover@latest
+
+    # Run vet & lint on the code
+    - name: Fmt, Lint, Vet, Test
+      run: |
+        go fmt ./...
+        golint ./...
+        go vet ./...
+
+    # Run testing on the code
+    - name: Run testing
+      run: go test -v -race -covermode=atomic -coverprofile=covprofile ./...
+
+    # todo: fix coverage reports...
+
