@@ -122,6 +122,13 @@ func (l *LifoBlockingListener) unblock() {
 	if l.limiter.backlog.len() > 0 {
 
 		evict, nextEvent := l.limiter.backlog.peek()
+
+		// Last element expired between us checking the
+		// queue length and invoking peek
+		if nextEvent == nil {
+			return
+		}
+
 		listener, ok := l.limiter.delegate.Acquire(nextEvent.ctx)
 
 		if ok && listener != nil {
@@ -175,7 +182,6 @@ type LifoBlockingLimiter struct {
 	maxBacklogTimeout time.Duration
 
 	backlog lifoQueue
-	c       *sync.Cond
 	mu      sync.RWMutex
 }
 
@@ -191,13 +197,11 @@ func NewLifoBlockingLimiter(
 	if maxBacklogTimeout == 0 {
 		maxBacklogTimeout = time.Millisecond * 1000
 	}
-	mu := sync.Mutex{}
 	return &LifoBlockingLimiter{
 		delegate:          delegate,
 		maxBacklogSize:    uint64(maxBacklogSize),
 		maxBacklogTimeout: maxBacklogTimeout,
 		backlog:           lifoQueue{},
-		c:                 sync.NewCond(&mu),
 	}
 }
 
