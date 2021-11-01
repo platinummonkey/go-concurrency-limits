@@ -86,7 +86,7 @@ func NewFixedPool(
 	case OrderingLIFO:
 		fp = FixedPool{
 			limit:    fixedLimit,
-			limiter:  limiter.NewLifoBlockingLimiter(defaultLimiter, maxBacklog, timeout),
+			limiter:  limiter.NewLifoBlockingLimiter(defaultLimiter, maxBacklog, timeout, metricRegistry),
 			ordering: ordering,
 		}
 	default:
