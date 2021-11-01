@@ -168,7 +168,7 @@ func TestLifoBlockingLimiter(t *testing.T) {
 			limit.NoopLimitLogger{},
 			core.EmptyMetricRegistryInstance,
 		)
-		limiter := NewLifoBlockingLimiter(delegateLimiter, -1, 0)
+		limiter := NewLifoBlockingLimiter(delegateLimiter, -1, 0, nil)
 		asrt.NotNil(limiter)
 		asrt.True(strings.Contains(limiter.String(), "LifoBlockingLimiter{delegate=DefaultLimiter{"))
 	})
