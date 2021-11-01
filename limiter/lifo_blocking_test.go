@@ -21,43 +21,40 @@ func TestLifoQueue(t *testing.T) {
 	q := lifoQueue{}
 
 	asrt.Equal(uint64(0), q.len())
-	size, ctx := q.peek()
-	asrt.Equal(uint64(0), size)
+	_, ctx := q.peek()
+	asrt.Equal(uint64(0), q.len())
 	asrt.Nil(ctx)
 	asrt.Nil(q.pop())
 
 	ctx1 := context.WithValue(context.Background(), testLifoQueueContextKey(1), 1)
 	q.push(ctx1)
 
-	size, ctx = q.peek()
+	_, element := q.peek()
 	asrt.Equal(uint64(1), q.len())
-	asrt.Equal(uint64(1), size)
-	asrt.NotNil(ctx)
-	asrt.Equal(ctx1, ctx)
+	asrt.NotNil(element.ctx)
+	asrt.Equal(ctx1, element.ctx)
 
 	// add a 2nd
 	ctx2 := context.WithValue(context.Background(), testLifoQueueContextKey(2), 2)
 	q.push(ctx2)
 
 	// make sure it's still LIFO
-	size, ctx = q.peek()
+	_, element = q.peek()
 	asrt.Equal(uint64(2), q.len())
-	asrt.Equal(uint64(2), size)
-	asrt.NotNil(ctx)
-	asrt.Equal(ctx2, ctx)
+	asrt.NotNil(element.ctx)
+	asrt.Equal(ctx2, element.ctx)
 	asrt.Equal(ctx2, q.top.ctx)
 
 	// pop off
-	element := q.pop()
+	element = q.pop()
 	asrt.NotNil(element)
 	asrt.Equal(ctx2, element.ctx)
 
 	// check that we only have one again
-	size, ctx = q.peek()
+	_, element = q.peek()
 	asrt.Equal(uint64(1), q.len())
-	asrt.Equal(uint64(1), size)
-	asrt.NotNil(ctx)
-	asrt.Equal(ctx1, ctx)
+	asrt.NotNil(element.ctx)
+	asrt.Equal(ctx1, element.ctx)
 
 	// add a 2nd & 3rd
 	ctx3 := context.WithValue(context.Background(), testLifoQueueContextKey(3), 3)
@@ -65,71 +62,59 @@ func TestLifoQueue(t *testing.T) {
 	ctx4 := context.WithValue(context.Background(), testLifoQueueContextKey(4), 4)
 	q.push(ctx4)
 
-	// remove the middle
-	asrt.Equal(uint64(3), q.top.id)
-	q.remove(2)
-	size, ctx = q.peek()
-	asrt.Equal(uint64(2), q.len())
-	asrt.Equal(uint64(2), size)
-	asrt.NotNil(ctx)
-	asrt.Equal(ctx4, ctx)
-	asrt.Equal(ctx4, q.top.ctx)
-
-	// check sanity on id's for regression
-	for i := 2; i > 0; i-- {
-		element := q.pop()
-		asrt.Equal(uint64(i), element.id)
-	}
 }
 
-func TestLifoQueue_Remove(t *testing.T) {
+func TestLifoQueue_Evict(t *testing.T) {
 	t.Parallel()
 	asrt := assert.New(t)
 	q := lifoQueue{}
 
 	asrt.Equal(uint64(0), q.len())
-	size, ctx := q.peek()
-	asrt.Equal(uint64(0), size)
-	asrt.Nil(ctx)
+	_, e := q.peek()
+	asrt.Equal(uint64(0), q.len())
+	asrt.Nil(e)
 	asrt.Nil(q.pop())
 
+	var evictFunc []func()
 	for i := 1; i <= 10; i++ {
-		ctx := context.WithValue(context.Background(), testLifoQueueContextKey(i), i)
-		q.push(ctx)
+		ctx := context.WithValue(context.Background(), testLifoQueueContextKey(1), i)
+		e, _ := q.push(ctx)
+		evictFunc = append(evictFunc, e)
 	}
 
 	// remove last
-	q.remove(1)
+	evictFunc[0]()
 	asrt.Equal(uint64(9), q.len())
 
 	// remove first
-	q.remove(q.len())
+	evictFunc[9]()
 	asrt.Equal(uint64(8), q.len())
 
 	// remove middle
-	q.remove(q.len() / 2)
+	evictFunc[4]()
 	asrt.Equal(uint64(7), q.len())
 
-	seenElements := make(map[uint64]struct{}, q.len())
+	seenElements := make(map[int]struct{}, q.len())
 	var element *lifoElement
 	for {
 		element = q.pop()
 		if element == nil {
 			break
 		}
-		_, seen := seenElements[element.id]
+		id := element.ctx.Value(testLifoQueueContextKey(1)).(int)
+		_, seen := seenElements[id]
 		asrt.False(seen, "no duplicate element ids allowed")
-		seenElements[element.id] = struct{}{}
+		seenElements[id] = struct{}{}
 	}
 	asrt.Equal(uint64(0), q.len())
 	asrt.Equal(7, len(seenElements))
 
 	q = lifoQueue{}
-	ctx = context.WithValue(context.Background(), testLifoQueueContextKey(1), 1)
-	q.push(ctx)
+	ctx := context.WithValue(context.Background(), testLifoQueueContextKey(1), 1)
+	evict, _ := q.push(ctx)
 
 	// Remove very last item leaving queue empty
-	q.remove(1)
+	evict()
 	asrt.Equal(uint64(0), q.len())
 }
 
