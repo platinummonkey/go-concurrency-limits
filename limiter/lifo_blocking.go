@@ -119,26 +119,29 @@ func (l *LifoBlockingListener) unblock() {
 	l.limiter.mu.Lock()
 	defer l.limiter.mu.Unlock()
 
-	if l.limiter.backlog.len() > 0 {
+	evict, nextEvent := l.limiter.backlog.peek()
 
-		evict, nextEvent := l.limiter.backlog.peek()
-		listener, ok := l.limiter.delegate.Acquire(nextEvent.ctx)
-
-		if ok && listener != nil {
-			// We successfully acquired a listener from the
-			// delegate. Now we can evict the element from
-			// the queue
-			evict()
-
-			// If the listener is not accepted due to subtle timings
-			// between setListener being invoked and the element
-			// expiration elapsing we need to be sure to release it.
-			if accepted := nextEvent.setListener(listener); !accepted {
-				listener.OnIgnore()
-			}
-		}
-		// otherwise: still can't acquire the limit.  unblock will be called again next time the limit is released.
+	// The queue is empty
+	if nextEvent == nil {
+		return
 	}
+
+	listener, ok := l.limiter.delegate.Acquire(nextEvent.ctx)
+
+	if ok && listener != nil {
+		// We successfully acquired a listener from the
+		// delegate. Now we can evict the element from
+		// the queue
+		evict()
+
+		// If the listener is not accepted due to subtle timings
+		// between setListener being invoked and the element
+		// expiration elapsing we need to be sure to release it.
+		if accepted := nextEvent.setListener(listener); !accepted {
+			listener.OnIgnore()
+		}
+	}
+	// otherwise: still can't acquire the limit.  unblock will be called again next time the limit is released.
 }
 
 // OnDropped is called to indicate the request failed and was dropped due to being rejected by an external limit or
@@ -175,7 +178,6 @@ type LifoBlockingLimiter struct {
 	maxBacklogTimeout time.Duration
 
 	backlog lifoQueue
-	c       *sync.Cond
 	mu      sync.RWMutex
 }
 
@@ -191,13 +193,11 @@ func NewLifoBlockingLimiter(
 	if maxBacklogTimeout == 0 {
 		maxBacklogTimeout = time.Millisecond * 1000
 	}
-	mu := sync.Mutex{}
 	return &LifoBlockingLimiter{
 		delegate:          delegate,
 		maxBacklogSize:    uint64(maxBacklogSize),
 		maxBacklogTimeout: maxBacklogTimeout,
 		backlog:           lifoQueue{},
-		c:                 sync.NewCond(&mu),
 	}
 }
 
