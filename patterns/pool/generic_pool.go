@@ -58,7 +58,7 @@ func NewPool(
 		}
 	case OrderingLIFO:
 		p = Pool{
-			limiter: limiter.NewLifoBlockingLimiter(delegateLimiter, maxBacklog, timeout),
+			limiter: limiter.NewLifoBlockingLimiter(delegateLimiter, maxBacklog, timeout, metricRegistry),
 		}
 	default:
 		p = Pool{

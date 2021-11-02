@@ -168,7 +168,7 @@ func TestLifoBlockingLimiter(t *testing.T) {
 			limit.NoopLimitLogger{},
 			core.EmptyMetricRegistryInstance,
 		)
-		limiter := NewLifoBlockingLimiter(delegateLimiter, -1, 0)
+		limiter := NewLifoBlockingLimiter(delegateLimiter, -1, 0, nil)
 		asrt.NotNil(limiter)
 		asrt.True(strings.Contains(limiter.String(), "LifoBlockingLimiter{delegate=DefaultLimiter{"))
 	})
@@ -214,8 +214,8 @@ func TestLifoBlockingLimiter(t *testing.T) {
 			go func(j int) {
 				startupReady <- true
 				listener, ok := limiter.Acquire(context.Background())
-				asrt.True(ok)
-				asrt.NotNil(listener)
+				asrt.True(ok, "must be true for j %d", j)
+				asrt.NotNil(listener, "must be not be nil for j %d", j)
 				mu.Lock()
 				waitingListeners = append(waitingListeners, acquiredListenerLifo{id: j, listener: listener})
 				mu.Unlock()

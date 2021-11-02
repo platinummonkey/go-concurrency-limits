@@ -186,6 +186,8 @@ func NewLifoBlockingLimiter(
 	delegate core.Limiter,
 	maxBacklogSize int,
 	maxBacklogTimeout time.Duration,
+	registry core.MetricRegistry,
+	tags ...string,
 ) *LifoBlockingLimiter {
 	if maxBacklogSize <= 0 {
 		maxBacklogSize = 100
@@ -193,19 +195,37 @@ func NewLifoBlockingLimiter(
 	if maxBacklogTimeout == 0 {
 		maxBacklogTimeout = time.Millisecond * 1000
 	}
-	return &LifoBlockingLimiter{
+	if registry == nil {
+		registry = &core.EmptyMetricRegistry{}
+	}
+
+	l := &LifoBlockingLimiter{
 		delegate:          delegate,
 		maxBacklogSize:    uint64(maxBacklogSize),
 		maxBacklogTimeout: maxBacklogTimeout,
 		backlog:           lifoQueue{},
 	}
+
+	registry.RegisterGauge(core.MetricLifoQueueLimit, func() (value float64, ok bool) {
+		return float64(maxBacklogSize), true
+	}, tags...)
+
+	registry.RegisterGauge(core.MetricLifoQueueSize, func() (value float64, ok bool) {
+		return float64(l.backlog.len()), true
+	}, tags...)
+
+	return l
 }
 
 // NewLifoBlockingLimiterWithDefaults will create a new LifoBlockingLimiter with default values.
 func NewLifoBlockingLimiterWithDefaults(
 	delegate core.Limiter,
 ) *LifoBlockingLimiter {
-	return NewLifoBlockingLimiter(delegate, 100, time.Millisecond*1000)
+	return NewLifoBlockingLimiter(
+		delegate,
+		100, time.Millisecond*1000,
+		&core.EmptyMetricRegistry{},
+	)
 }
 
 func (l *LifoBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
