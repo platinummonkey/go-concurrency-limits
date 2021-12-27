@@ -177,7 +177,7 @@ type LifoBlockingLimiter struct {
 	maxBacklogSize    uint64
 	maxBacklogTimeout time.Duration
 
-	backlog lifoQueue
+	backlog *lifoQueue
 	mu      sync.RWMutex
 }
 
@@ -203,16 +203,14 @@ func NewLifoBlockingLimiter(
 		delegate:          delegate,
 		maxBacklogSize:    uint64(maxBacklogSize),
 		maxBacklogTimeout: maxBacklogTimeout,
-		backlog:           lifoQueue{},
+		backlog:           &lifoQueue{},
 	}
 
-	registry.RegisterGauge(core.MetricLifoQueueLimit, func() (value float64, ok bool) {
-		return float64(maxBacklogSize), true
-	}, tags...)
+	registry.RegisterGauge(core.MetricLifoQueueLimit, core.NewIntMetricSupplierWrapper(func() int {
+		return maxBacklogSize
+	}), tags...)
 
-	registry.RegisterGauge(core.MetricLifoQueueSize, func() (value float64, ok bool) {
-		return float64(l.backlog.len()), true
-	}, tags...)
+	registry.RegisterGauge(core.MetricLifoQueueSize, core.NewUint64MetricSupplierWrapper(l.backlog.len), tags...)
 
 	return l
 }
@@ -261,7 +259,7 @@ func (l *LifoBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 // If acquired the caller must call one of the Listener methods when the operation has been completed to release
 // the count.
 //
-// context Context for the request. The context is used by advanced strategies such as LookupPartitionStrategy.
+// ctx Context for the request. The context is used by advanced strategies such as LookupPartitionStrategy.
 func (l *LifoBlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	delegateListener := l.tryAcquire(ctx)
 	if delegateListener == nil {
