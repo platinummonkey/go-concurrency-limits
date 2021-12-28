@@ -10,10 +10,10 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
-// QueueOrdering defines the pattern for ordering requests on Pool
+type EvictFunc func()
+
 type QueueOrdering string
 
-// The available options
 const (
 	OrderingFIFO QueueOrdering = "fifo"
 	OrderingLIFO QueueOrdering = "lifo"
@@ -25,7 +25,6 @@ type queueElement struct {
 	ctx         context.Context
 	releaseChan chan<- core.Listener
 	next, prev  *queueElement
-	evicted     bool
 }
 
 func (e *queueElement) setListener(listener core.Listener) bool {
@@ -34,7 +33,7 @@ func (e *queueElement) setListener(listener core.Listener) bool {
 		close(e.releaseChan)
 		return true
 	default:
-		// timeout has expired
+		// timeout has expired or context has been cancelled
 		return false
 	}
 }
@@ -43,15 +42,6 @@ func (q *queue) evictionFunc(e *list.Element) func() {
 	return func() {
 		q.mu.Lock()
 		defer q.mu.Unlock()
-
-		qe := e.Value.(*queueElement)
-		// Prevent multiple invocations from
-		// corrupting the queue state.
-		if qe.evicted {
-			return
-		}
-
-		qe.evicted = true
 		q.list.Remove(e)
 	}
 }
@@ -68,12 +58,16 @@ func (q *queue) len() uint64 {
 	return uint64(q.list.Len())
 }
 
-func (q *queue) push(ctx context.Context) (func(), <-chan core.Listener) {
+func (q *queue) push(ctx context.Context) (EvictFunc, <-chan core.Listener) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	releaseChan := make(chan core.Listener)
 
 	e := &queueElement{ctx: ctx, releaseChan: releaseChan}
+
+	// We always push to the front of the list regardless of
+	// queue order. As usage of the list will always assume
+	// Front == newest and Back == Oldest
 	listElement := q.list.PushFront(e)
 
 	return q.evictionFunc(listElement), releaseChan
@@ -88,25 +82,31 @@ func (q *queue) pop() *queueElement {
 	return ele
 }
 
-func (q *queue) peek() (func(), *queueElement) {
+// peek will return the next queue element to process
+// depending on the ordering configured in queue.
+// The element returned is not evicted from the queue
+// until EvictFunc is invoked
+func (q *queue) peek() (EvictFunc, *queueElement) {
 	q.mu.RLock()
 	defer q.mu.RUnlock()
-	if q.list.Len() > 0 {
 
-		var element *list.Element
-		switch q.ordering {
-		case OrderingFIFO:
-			element = q.list.Back()
-		case OrderingLIFO:
-			element = q.list.Front()
-		}
+	var element *list.Element
 
+	switch q.ordering {
+	case OrderingFIFO:
+		element = q.list.Back()
+	case OrderingLIFO:
+		element = q.list.Front()
+	}
+
+	if element != nil {
 		return q.evictionFunc(element), element.Value.(*queueElement)
 	}
+
 	return nil, nil
 }
 
-// QueueBlockingListener implements a blocking listener for the QueueBlockingListener
+// QueueBlockingListener implements a blocking listener for the QueueBlockingLimiter
 type QueueBlockingListener struct {
 	delegateListener core.Listener
 	limiter          *QueueBlockingLimiter
@@ -264,7 +264,8 @@ func (l *QueueBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 	}
 
 	// Create a holder for a listener and block until a listener is released by another
-	// operation.  Holders will be unblocked in LIFO order
+	// operation.  Holders will be unblocked in LIFO or FIFO order depending on whatever
+	// ordering was configured when backlog was instantiated
 	evict, eventReleaseChan := l.backlog.push(ctx)
 
 	// We're using a nil chan so that we
@@ -299,7 +300,8 @@ func (l *QueueBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 // If acquired the caller must call one of the Listener methods when the operation has been completed to release
 // the count.
 //
-// ctx Context for the request. The context is used by advanced strategies such as LookupPartitionStrategy.
+// ctx Context for the request. The context is used by advanced strategies such as LookupPartitionStrategy
+// and early queue eviction on context cancellation.
 func (l *QueueBlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	delegateListener := l.tryAcquire(ctx)
 	if delegateListener == nil {
