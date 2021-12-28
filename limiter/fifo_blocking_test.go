@@ -14,8 +14,6 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/strategy"
 )
 
-type testFifoQueueContextKey int
-
 func TestFifoQueue(t *testing.T) {
 	t.Parallel()
 	asrt := assert.New(t)
@@ -89,11 +87,6 @@ func TestFifoBlockingListener(t *testing.T) {
 	listener.OnSuccess()
 	listener.OnIgnore()
 	listener.OnDropped()
-}
-
-type acquiredListenerFifo struct {
-	id       int
-	listener core.Listener
 }
 
 func TestFifoBlockingLimiter(t *testing.T) {

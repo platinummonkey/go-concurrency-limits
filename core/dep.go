@@ -25,6 +25,11 @@ const (
 	MetricLifoQueueSize = "lifo.queue_size"
 	// MetricLifoQueueLimit represents the name of the metric for the max size of a lifo queue
 	MetricLifoQueueLimit = "lifo.queue_limit"
+
+	// MetricQueueSize represents the name of the metric for the size of a lifo queue
+	MetricQueueSize = "queue_size"
+	// MetricQueueLimit represents the name of the metric for the max size of a lifo queue
+	MetricQueueLimit = "queue_limit"
 )
 
 // PrefixMetricWithName will prefix a given name with the metric name in the form "<name>.<metric>"
