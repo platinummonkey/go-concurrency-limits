@@ -10,12 +10,25 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
+// EvictFunc is a type denoting a function used to evict an
+// element from a QueueBlockingLimiter backlog
 type EvictFunc func()
 
+// QueueOrdering is an enum used for configuring the order in
+// which elements in a QueueBlockingLimiter backlog are consumed
 type QueueOrdering string
 
 const (
+	// OrderingFIFO is an enum constant used to represent
+	// a first-in first-out ordering for queue elements.
+	// This means that the oldest elements in a queue are
+	// the first to be consumed
 	OrderingFIFO QueueOrdering = "fifo"
+
+	// OrderingLIFO is an enum constant used to represent
+	// a last-in first-out ordering for queue elements.
+	// This means that the newest elements in a queue are
+	// the first to be consumed
 	OrderingLIFO QueueOrdering = "lifo"
 
 	metricTagOrdering = "ordering"
@@ -180,6 +193,8 @@ type QueueBlockingLimiter struct {
 	mu      sync.RWMutex
 }
 
+// QueueLimiterConfig is a struct used to encapsulate the constructor arguments
+// needed for creating a QueueBlockingLimiter instance
 type QueueLimiterConfig struct {
 	Ordering            QueueOrdering `yaml:"ordering,omitempty" json:"ordering,omitempty"`
 	MaxBacklogSize      int           `yaml:"maxBacklogSize,omitempty" json:"maxBacklogSize,omitempty"`
@@ -190,6 +205,8 @@ type QueueLimiterConfig struct {
 	Tags           []string `yaml:"tags,omitempty" json:"tags,omitempty"`
 }
 
+// ApplyDefaults is used by QueueBlockingLimiter constructors
+// to set defaults for optional limiter configuration arguments
 func (c *QueueLimiterConfig) ApplyDefaults() {
 
 	if c.MaxBacklogSize <= 0 {
