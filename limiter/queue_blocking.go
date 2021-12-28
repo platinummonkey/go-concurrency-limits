@@ -17,6 +17,8 @@ type QueueOrdering string
 const (
 	OrderingFIFO QueueOrdering = "fifo"
 	OrderingLIFO QueueOrdering = "lifo"
+
+	metricTagOrdering = "ordering"
 )
 
 type queueElement struct {
@@ -205,6 +207,8 @@ func (c *QueueLimiterConfig) ApplyDefaults() {
 	if c.Ordering == "" {
 		c.Ordering = OrderingLIFO
 	}
+
+	c.Tags = append(c.Tags, metricTagOrdering, string(c.Ordering))
 }
 
 // NewQueueBlockingLimiterFromConfig will create a new QueueBlockingLimiter

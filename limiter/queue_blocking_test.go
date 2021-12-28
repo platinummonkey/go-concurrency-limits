@@ -315,9 +315,9 @@ func TestQueueBlockingListener_Lifo(t *testing.T) {
 		limit.NoopLimitLogger{},
 		core.EmptyMetricRegistryInstance,
 	)
-	limiter := NewLifoBlockingLimiterWithDefaults(delegateLimiter)
+	limiter := NewQueueBlockingLimiterWithDefaults(delegateLimiter)
 	delegateListener, _ := delegateLimiter.Acquire(context.Background())
-	listener := LifoBlockingListener{
+	listener := QueueBlockingListener{
 		delegateListener: delegateListener,
 		limiter:          limiter,
 	}
@@ -329,7 +329,7 @@ func TestQueueBlockingListener_Lifo(t *testing.T) {
 func TestQueueBlockingLimiter_Lifo(t *testing.T) {
 	t.Parallel()
 
-	t.Run("NewLifoBlockingLimiter", func(t2 *testing.T) {
+	t.Run("NewQueueBlockingLimiter", func(t2 *testing.T) {
 		t2.Parallel()
 		asrt := assert.New(t2)
 		delegateLimiter, _ := NewDefaultLimiterWithDefaults(
@@ -431,9 +431,9 @@ func TestQueueBlockingLimiter_Lifo(t *testing.T) {
 			limit.NoopLimitLogger{},
 			core.EmptyMetricRegistryInstance,
 		)
-		limiter := NewLifoBlockingLimiterFromConfig(
+		limiter := NewQueueBlockingLimiterFromConfig(
 			delegateLimiter,
-			LifoLimiterConfig{
+			QueueLimiterConfig{
 				BacklogEvictDoneCtx: true,
 				MaxBacklogTimeout:   1 * time.Hour,
 			},
