@@ -54,11 +54,21 @@ func NewPool(
 	switch ordering {
 	case OrderingFIFO:
 		p = Pool{
-			limiter: limiter.NewFifoBlockingLimiter(delegateLimiter, maxBacklog, timeout),
+			limiter: limiter.NewQueueBlockingLimiterFromConfig(delegateLimiter, limiter.QueueLimiterConfig{
+				Ordering:          limiter.OrderingFIFO,
+				MaxBacklogSize:    maxBacklog,
+				MaxBacklogTimeout: timeout,
+				MetricRegistry:    metricRegistry,
+			}),
 		}
 	case OrderingLIFO:
 		p = Pool{
-			limiter: limiter.NewLifoBlockingLimiter(delegateLimiter, maxBacklog, timeout, metricRegistry),
+			limiter: limiter.NewQueueBlockingLimiterFromConfig(delegateLimiter, limiter.QueueLimiterConfig{
+				Ordering:          limiter.OrderingLIFO,
+				MaxBacklogSize:    maxBacklog,
+				MaxBacklogTimeout: timeout,
+				MetricRegistry:    metricRegistry,
+			}),
 		}
 	default:
 		p = Pool{

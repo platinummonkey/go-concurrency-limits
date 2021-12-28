@@ -79,14 +79,24 @@ func NewFixedPool(
 	switch ordering {
 	case OrderingFIFO:
 		fp = FixedPool{
-			limit:    fixedLimit,
-			limiter:  limiter.NewFifoBlockingLimiter(defaultLimiter, maxBacklog, timeout),
+			limit: fixedLimit,
+			limiter: limiter.NewQueueBlockingLimiterFromConfig(defaultLimiter, limiter.QueueLimiterConfig{
+				Ordering:          limiter.OrderingFIFO,
+				MaxBacklogSize:    maxBacklog,
+				MaxBacklogTimeout: timeout,
+				MetricRegistry:    metricRegistry,
+			}),
 			ordering: ordering,
 		}
 	case OrderingLIFO:
 		fp = FixedPool{
-			limit:    fixedLimit,
-			limiter:  limiter.NewLifoBlockingLimiter(defaultLimiter, maxBacklog, timeout, metricRegistry),
+			limit: fixedLimit,
+			limiter: limiter.NewQueueBlockingLimiterFromConfig(defaultLimiter, limiter.QueueLimiterConfig{
+				Ordering:          limiter.OrderingLIFO,
+				MaxBacklogSize:    maxBacklog,
+				MaxBacklogTimeout: timeout,
+				MetricRegistry:    metricRegistry,
+			}),
 			ordering: ordering,
 		}
 	default:
@@ -104,6 +114,7 @@ func (p *FixedPool) Limit() int {
 	return p.limit
 }
 
+// Ordering the ordering strategy configured for this pool.
 func (p *FixedPool) Ordering() Ordering {
 	return p.ordering
 }
