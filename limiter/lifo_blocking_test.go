@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -240,5 +241,59 @@ func TestLifoBlockingLimiter(t *testing.T) {
 				acquired.listener.OnSuccess()
 			}
 		}
+	})
+
+	t.Run("CtxCancelled", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		delegateLimiter, _ := NewDefaultLimiter(
+			limit.NewFixedLimit("test", 10, nil),
+			defaultMinWindowTime,
+			defaultMaxWindowTime,
+			defaultMinRTTThreshold,
+			defaultWindowSize,
+			strategy.NewSimpleStrategy(10),
+			limit.NoopLimitLogger{},
+			core.EmptyMetricRegistryInstance,
+		)
+		limiter := NewLifoBlockingLimiterFromConfig(
+			delegateLimiter,
+			LifoLimiterConfig{
+				BacklogEvictDoneCtx: true,
+				MaxBacklogTimeout:   1 * time.Hour,
+			},
+		)
+		asrt.NotNil(limiter)
+
+		// acquire all tokens first
+		listeners := make([]core.Listener, 0)
+		for i := 0; i < 10; i++ {
+			listener, ok := limiter.Acquire(context.Background())
+			asrt.True(ok)
+			asrt.NotNil(listener)
+			listeners = append(listeners, listener)
+		}
+
+		wg := sync.WaitGroup{}
+		wg.Add(5)
+		for i := 0; i < 5; i++ {
+			go func(j int) {
+				wg.Done()
+				listener, ok := limiter.Acquire(context.Background())
+				asrt.True(ok, "must be true for j %d", j)
+				asrt.NotNil(listener, "must be not be nil for j %d", j)
+			}(i)
+		}
+
+		cancelledCtx, cancel := context.WithCancel(context.Background())
+		time.AfterFunc(50*time.Millisecond, func() {
+			cancel()
+		})
+
+		token, ok := limiter.Acquire(cancelledCtx)
+		asrt.False(ok)
+		asrt.Nil(token)
+
+		asrt.Equal(limiter.backlog.len(), uint64(5))
 	})
 }

@@ -11,7 +11,7 @@ import (
 
 type lifoElement struct {
 	ctx         context.Context
-	releaseChan chan core.Listener
+	releaseChan chan<- core.Listener
 	next, prev  *lifoElement
 	evicted     bool
 }
@@ -64,7 +64,7 @@ func (q *lifoQueue) len() uint64 {
 	return q.size
 }
 
-func (q *lifoQueue) push(ctx context.Context) (func(), chan core.Listener) {
+func (q *lifoQueue) push(ctx context.Context) (func(), <-chan core.Listener) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	releaseChan := make(chan core.Listener)
@@ -173,15 +173,68 @@ func (l *LifoBlockingListener) OnSuccess() {
 //
 // Use this limiter only when the concurrency model allows the limiter to be blocked.
 type LifoBlockingLimiter struct {
-	delegate          core.Limiter
-	maxBacklogSize    uint64
-	maxBacklogTimeout time.Duration
+	delegate            core.Limiter
+	maxBacklogSize      uint64
+	maxBacklogTimeout   time.Duration
+	backlogEvictDoneCtx bool
 
 	backlog *lifoQueue
 	mu      sync.RWMutex
 }
 
+type LifoLimiterConfig struct {
+	MaxBacklogSize      int           `yaml:"maxBacklogSize,omitempty" json:"maxBacklogSize,omitempty"`
+	MaxBacklogTimeout   time.Duration `yaml:"maxBacklogTimeout,omitempty" json:"maxBacklogTimeout,omitempty"`
+	BacklogEvictDoneCtx bool          `yaml:"backlogEvictDoneCtx,omitempty" json:"backlogEvictDoneCtx,omitempty"`
+
+	MetricRegistry core.MetricRegistry
+	Tags           []string `yaml:"tags,omitempty" json:"tags,omitempty"`
+}
+
+func (c *LifoLimiterConfig) ApplyDefaults() {
+
+	if c.MaxBacklogSize <= 0 {
+		c.MaxBacklogSize = 100
+	}
+
+	if c.MaxBacklogTimeout == 0 {
+		c.MaxBacklogTimeout = time.Millisecond * 1000
+	}
+
+	if c.MetricRegistry == nil {
+		c.MetricRegistry = &core.EmptyMetricRegistry{}
+	}
+}
+
+// NewLifoBlockingLimiterFromConfig will create a new LifoBlockingLimiter
+func NewLifoBlockingLimiterFromConfig(
+	delegate core.Limiter,
+	config LifoLimiterConfig,
+) *LifoBlockingLimiter {
+
+	config.ApplyDefaults()
+
+	l := &LifoBlockingLimiter{
+		delegate:            delegate,
+		maxBacklogSize:      uint64(config.MaxBacklogSize),
+		maxBacklogTimeout:   config.MaxBacklogTimeout,
+		backlogEvictDoneCtx: config.BacklogEvictDoneCtx,
+		backlog:             &lifoQueue{},
+	}
+
+	config.MetricRegistry.RegisterGauge(
+		core.MetricLifoQueueLimit, core.NewIntMetricSupplierWrapper(func() int {
+			return config.MaxBacklogSize
+		}), config.Tags...)
+
+	config.MetricRegistry.RegisterGauge(
+		core.MetricLifoQueueSize, core.NewUint64MetricSupplierWrapper(l.backlog.len), config.Tags...)
+
+	return l
+}
+
 // NewLifoBlockingLimiter will create a new LifoBlockingLimiter
+// Deprecated, use NewLifoBlockingLimiterFromConfig instead
 func NewLifoBlockingLimiter(
 	delegate core.Limiter,
 	maxBacklogSize int,
@@ -189,40 +242,25 @@ func NewLifoBlockingLimiter(
 	registry core.MetricRegistry,
 	tags ...string,
 ) *LifoBlockingLimiter {
-	if maxBacklogSize <= 0 {
-		maxBacklogSize = 100
-	}
-	if maxBacklogTimeout == 0 {
-		maxBacklogTimeout = time.Millisecond * 1000
-	}
-	if registry == nil {
-		registry = &core.EmptyMetricRegistry{}
-	}
 
-	l := &LifoBlockingLimiter{
-		delegate:          delegate,
-		maxBacklogSize:    uint64(maxBacklogSize),
-		maxBacklogTimeout: maxBacklogTimeout,
-		backlog:           &lifoQueue{},
-	}
-
-	registry.RegisterGauge(core.MetricLifoQueueLimit, core.NewIntMetricSupplierWrapper(func() int {
-		return maxBacklogSize
-	}), tags...)
-
-	registry.RegisterGauge(core.MetricLifoQueueSize, core.NewUint64MetricSupplierWrapper(l.backlog.len), tags...)
-
-	return l
+	return NewLifoBlockingLimiterFromConfig(
+		delegate,
+		LifoLimiterConfig{
+			MaxBacklogSize:    maxBacklogSize,
+			MaxBacklogTimeout: maxBacklogTimeout,
+			MetricRegistry:    registry,
+			Tags:              tags,
+		},
+	)
 }
 
 // NewLifoBlockingLimiterWithDefaults will create a new LifoBlockingLimiter with default values.
 func NewLifoBlockingLimiterWithDefaults(
 	delegate core.Limiter,
 ) *LifoBlockingLimiter {
-	return NewLifoBlockingLimiter(
+	return NewLifoBlockingLimiterFromConfig(
 		delegate,
-		100, time.Millisecond*1000,
-		&core.EmptyMetricRegistry{},
+		LifoLimiterConfig{},
 	)
 }
 
@@ -242,6 +280,15 @@ func (l *LifoBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 	// operation.  Holders will be unblocked in LIFO order
 	evict, eventReleaseChan := l.backlog.push(ctx)
 
+	// We're using a nil chan so that we
+	// can avoid needing to duplicate the
+	// following select statement to support
+	// a conditional case.
+	var ctxDone <-chan struct{}
+	if l.backlogEvictDoneCtx {
+		ctxDone = ctx.Done()
+	}
+
 	select {
 	case listener = <-eventReleaseChan:
 		// If we have received a listener then that means
@@ -250,6 +297,12 @@ func (l *LifoBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 		return listener
 	case <-time.After(l.maxBacklogTimeout):
 		// Remove the holder from the backlog.
+		evict()
+		return nil
+	case <-ctxDone:
+		// The context has been cancelled before `maxBacklogTimeout`
+		// could elapse. Since this context no longer needs a listener
+		// we evict it from the backlog to free up space.
 		evict()
 		return nil
 	}
