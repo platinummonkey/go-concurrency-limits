@@ -113,10 +113,9 @@ func NewBlockingLimiter(
 func (l *BlockingLimiter) tryAcquire(ctx context.Context) (core.Listener, bool) {
 	for {
 		l.c.L.Lock()
-		// if the deadline has passed, fail quickly
-		deadline, deadlineSet := ctx.Deadline()
-		if deadlineSet && time.Now().UTC().After(deadline) {
-			l.logger.Debugf("deadline passed ctx=%v", time.Now().UTC().After(deadline), ctx)
+		// if the context has already been cancelled, fail quickly
+		if err := ctx.Err(); err != nil {
+			l.logger.Debugf("context cancelled ctx=%v", ctx)
 			l.c.L.Unlock()
 			return nil, false
 		}
@@ -128,27 +127,21 @@ func (l *BlockingLimiter) tryAcquire(ctx context.Context) (core.Listener, bool) 
 			l.c.L.Unlock()
 			return listener, true
 		}
-
-		// We have reached the limit so block until a token is released
-		timeout := l.timeout // the default if not set
-
-		// infer timeout from deadline if set.
-		if deadlineSet {
-			timeout := deadline.Sub(time.Now().UTC())
-			// if the deadline has passed, return acquire failure
-			if timeout <= 0 {
-				l.logger.Debugf("deadline passed ctx=%v", ctx)
-				return nil, false
-			}
-		}
-
-		// block until we timeout
 		l.c.L.Unlock()
-		timeoutWaiter := newTimeoutWaiter(l.c, timeout)
+
+		// We have reached the limit so block until:
+		// - A token is released
+		// - A timeout
+		// - The context is cancelled
+		timeoutWaiter := newTimeoutWaiter(l.c, l.timeout)
 		timeoutWaiter.start()
-		l.logger.Debugf("Blocking waiting for release or timeout ctx=%v", ctx)
-		<-timeoutWaiter.wait()
-		l.logger.Debugf("blocking released, trying again to acquire ctx=%v", ctx)
+		select {
+		case <-timeoutWaiter.wait():
+			l.logger.Debugf("blocking released, trying again to acquire ctx=%v", ctx)
+		case <-ctx.Done():
+			l.logger.Debugf("blocking released, context's has been cancelled ctx=%v", ctx)
+			return nil, false
+		}
 	}
 }
 
