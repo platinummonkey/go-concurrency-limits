@@ -3,7 +3,7 @@ module github.com/platinummonkey/go-concurrency-limits
 go 1.21
 
 require (
-	github.com/DataDog/datadog-go/v5 v5.4.0
+	github.com/DataDog/datadog-go/v5 v5.5.0
 	github.com/golang/protobuf v1.5.3
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 	github.com/stretchr/testify v1.8.4
