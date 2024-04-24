@@ -18,29 +18,28 @@ import (
 // characteristics.
 //
 // The core algorithm re-calculates the limit every sampling window (ex. 1 second) using the formula
+//     // Calculate the gradient limiting to the range [0.5, 1.0] to filter outliers
+//     gradient = max(0.5, min(1.0, longtermRtt / currentRtt));
 //
-//	// Calculate the gradient limiting to the range [0.5, 1.0] to filter outliers
-//	gradient = max(0.5, min(1.0, longtermRtt / currentRtt));
+//     // Calculate the new limit by applying the gradient and allowing for some queuing
+//     newLimit = gradient * currentLimit + queueSize;
 //
-//	// Calculate the new limit by applying the gradient and allowing for some queuing
-//	newLimit = gradient * currentLimit + queueSize;
+//     // Update the limit using a smoothing factor (default 0.2)
+//     newLimit = currentLimit * (1-smoothing) + newLimit * smoothing
 //
-//	// Update the limit using a smoothing factor (default 0.2)
-//	newLimit = currentLimit * (1-smoothing) + newLimit * smoothing
+// The limit can be in one of three main states
 //
-// # The limit can be in one of three main states
-//
-//  1. Steady state
-//     In this state the average RTT is very stable and the current measurement whipsaws around this value, sometimes
-//     reducing the limit, sometimes increasing it.
-//  2. Transition from steady state to load
-//     In this state either the RPS to latency has spiked. The gradient is < 1.0 due to a growing request queue that
-//     cannot be handled by the system. Excessive requests and rejected due to the low limit. The baseline RTT grows using
-//     exponential decay but lags the current measurement, which keeps the gradient < 1.0 and limit low.
-//  3. Transition from load to steady state
-//     In this state the system goes back to steady state after a prolonged period of excessive load.  Requests aren't
-//     rejected and the sample RTT remains low. During this state the long term RTT may take some time to go back to
-//     normal and could potentially be several multiples higher than the current RTT.
+// 1. Steady state
+//    In this state the average RTT is very stable and the current measurement whipsaws around this value, sometimes
+//    reducing the limit, sometimes increasing it.
+// 2. Transition from steady state to load
+//    In this state either the RPS to latency has spiked. The gradient is < 1.0 due to a growing request queue that
+//    cannot be handled by the system. Excessive requests and rejected due to the low limit. The baseline RTT grows using
+//    exponential decay but lags the current measurement, which keeps the gradient < 1.0 and limit low.
+// 3. Transition from load to steady state
+//    In this state the system goes back to steady state after a prolonged period of excessive load.  Requests aren't
+//    rejected and the sample RTT remains low. During this state the long term RTT may take some time to go back to
+//    normal and could potentially be several multiples higher than the current RTT.
 type Gradient2Limit struct {
 	// Estimated concurrency limit based on our algorithm
 	estimatedLimit float64
@@ -92,17 +91,11 @@ func NewDefaultGradient2Limit(
 // @param initialLimit: Initial limit used by the limiter.
 // @param maxConcurrency: Maximum allowable concurrency.  Any estimated concurrency will be capped.
 // @param minLimit: Minimum concurrency limit allowed.  The minimum helps prevent the algorithm from adjust the limit
-//
-//	too far down.  Note that this limit is not desirable when use as backpressure for batch apps.
-//
+//                  too far down.  Note that this limit is not desirable when use as backpressure for batch apps.
 // @param queueSizeFunc: Function to dynamically determine the amount the estimated limit can grow while
-//
-//	latencies remain low as a function of the current limit.
-//
+//                       latencies remain low as a function of the current limit.
 // @param smoothing: Smoothing factor to limit how aggressively the estimated limit can shrink when queuing has been
-//
-//	detected.  Value of 0.0 to 1.0 where 1.0 means the limit is completely replicated by the new estimate.
-//
+//                   detected.  Value of 0.0 to 1.0 where 1.0 means the limit is completely replicated by the new estimate.
 // @param longWindow: long time window for the exponential avg recordings.
 // @param registry: metric registry to publish metrics
 func NewGradient2Limit(
