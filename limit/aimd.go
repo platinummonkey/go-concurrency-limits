@@ -2,9 +2,10 @@ package limit
 
 import (
 	"fmt"
-	"github.com/platinummonkey/go-concurrency-limits/core"
 	"math"
 	"sync"
+
+	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
 // AIMDLimit implements a Loss based dynamic Limit that does an additive increment as long as there are no errors and a
@@ -55,7 +56,7 @@ func NewAIMDLimit(
 		listeners:    make([]core.LimitChangeListener, 0),
 		registry:     registry,
 	}
-	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
+	l.commonSampler = core.NewCommonMetricSamplerOrNil(registry, l, name, tags...)
 	return l
 }
 

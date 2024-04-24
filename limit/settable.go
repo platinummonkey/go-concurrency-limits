@@ -3,6 +3,7 @@ package limit
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 
 	"github.com/platinummonkey/go-concurrency-limits/core"
 )
@@ -30,15 +31,13 @@ func NewSettableLimit(name string, limit int, registry core.MetricRegistry, tags
 		limit:     int32(limit),
 		listeners: make([]core.LimitChangeListener, 0),
 	}
-	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
+	l.commonSampler = core.NewCommonMetricSamplerOrNil(registry, l, name, tags...)
 	return l
 }
 
 // EstimatedLimit will return the estimated limit.
 func (l *SettableLimit) EstimatedLimit() int {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-	return int(l.limit)
+	return int(atomic.LoadInt32(&l.limit))
 }
 
 // NotifyOnChange will register a callback to receive notification whenever the limit is updated to a new value.
@@ -50,6 +49,8 @@ func (l *SettableLimit) NotifyOnChange(consumer core.LimitChangeListener) {
 
 // notifyListeners will call the callbacks on limit changes
 func (l *SettableLimit) notifyListeners(newLimit int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	for _, listener := range l.listeners {
 		listener(newLimit)
 	}
@@ -63,14 +64,10 @@ func (l *SettableLimit) OnSample(startTime int64, rtt int64, inFlight int, didDr
 
 // SetLimit will update the current limit.
 func (l *SettableLimit) SetLimit(limit int) {
-	l.mu.Lock()
-	l.limit = int32(limit)
+	atomic.StoreInt32(&l.limit, int32(limit))
 	l.notifyListeners(limit)
-	l.mu.Unlock()
 }
 
 func (l *SettableLimit) String() string {
-	l.mu.RLock()
-	defer l.mu.RUnlock()
-	return fmt.Sprintf("SettableLimit{limit=%d}", l.limit)
+	return fmt.Sprintf("SettableLimit{limit=%d}", atomic.LoadInt32(&l.limit))
 }

@@ -96,7 +96,7 @@ func NewWindowedLimit(
 		listeners:       make([]core.LimitChangeListener, 0),
 		registry:        registry,
 	}
-	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
+	l.commonSampler = core.NewCommonMetricSamplerOrNil(registry, l, name, tags...)
 	return l, nil
 
 }

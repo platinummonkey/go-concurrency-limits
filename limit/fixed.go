@@ -2,6 +2,7 @@ package limit
 
 import (
 	"fmt"
+
 	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
@@ -26,7 +27,7 @@ func NewFixedLimit(name string, limit int, registry core.MetricRegistry, tags ..
 		limit:    limit,
 		registry: registry,
 	}
-	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
+	l.commonSampler = core.NewCommonMetricSamplerOrNil(registry, l, name, tags...)
 	return l
 }
 

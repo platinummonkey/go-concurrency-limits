@@ -40,9 +40,14 @@ func NewDeadlineLimiter(
 
 // tryAcquire will block when attempting to acquire a token
 func (l *DeadlineLimiter) tryAcquire(ctx context.Context) (listener core.Listener, ok bool) {
-	l.c.L.Lock()
-	defer l.c.L.Unlock()
+
 	for {
+		// if the context has already been cancelled, fail quickly
+		if err := ctx.Err(); err != nil {
+			l.logger.Debugf("context cancelled ctx=%v", ctx)
+			return nil, false
+		}
+
 		// if the deadline has passed, fail quickly
 		if time.Now().UTC().After(l.deadline) {
 			return nil, false
@@ -58,11 +63,18 @@ func (l *DeadlineLimiter) tryAcquire(ctx context.Context) (listener core.Listene
 		// We have reached the limit so block until a token is released
 		timeout := l.deadline.Sub(time.Now().UTC())
 
-		// block until we timeout
-		timeoutWaiter := newTimeoutWaiter(l.c, timeout)
-		timeoutWaiter.start()
+		// We have reached the limit so block until:
+		// - A token is released
+		// - A timeout
+		// - The context is cancelled
 		l.logger.Debugf("Blocking waiting for release or timeout ctx=%v", ctx)
-		<-timeoutWaiter.wait()
+		if shouldAcquire := blockUntilSignaled(ctx, l.c, timeout); shouldAcquire {
+			listener, ok := l.delegate.Acquire(ctx)
+			if ok && listener != nil {
+				l.logger.Debugf("delegate returned a listener ctx=%v", ctx)
+				return listener, true
+			}
+		}
 		l.logger.Debugf("blocking released, trying again to acquire ctx=%v", ctx)
 	}
 }
