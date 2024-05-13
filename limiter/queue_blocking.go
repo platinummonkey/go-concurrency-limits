@@ -294,13 +294,23 @@ func (l *QueueBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 		ctxDone = ctx.Done()
 	}
 
+	var backlogTimeout <-chan time.Time
+	if l.maxBacklogTimeout > 0 {
+		// use NewTimer over time.After so that we don't have to
+		// wait for the timeout to elapse in order to release memory
+		timer := time.NewTimer(l.maxBacklogTimeout)
+		defer timer.Stop()
+
+		backlogTimeout = timer.C
+	}
+
 	select {
 	case listener = <-eventReleaseChan:
 		// If we have received a listener then that means
 		// that 'unblock' has already evicted this element
 		// from the queue for us.
 		return listener
-	case <-time.After(l.maxBacklogTimeout):
+	case <-backlogTimeout:
 		// Remove the holder from the backlog.
 		evict()
 		return nil

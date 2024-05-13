@@ -36,6 +36,99 @@ type contextKey string
 
 var testContextKey contextKey = "jobID"
 
+func BenchmarkBlockingLimiter(b *testing.B) {
+
+	benchLimiter := func(b *testing.B, limitCount, acquireCount int, timeout time.Duration) {
+		b.StopTimer()
+
+		l := limit.NewSettableLimit("test", limitCount, nil)
+		defaultLimiter, err := NewDefaultLimiter(
+			l,
+			defaultMinWindowTime,
+			defaultMaxWindowTime,
+			defaultMinRTTThreshold,
+			defaultWindowSize,
+			strategy.NewSimpleStrategy(limitCount),
+			limit.NoopLimitLogger{},
+			core.EmptyMetricRegistryInstance,
+		)
+		if err != nil {
+			b.Fatal(err.Error())
+		}
+
+		blockingLimiter := NewBlockingLimiter(defaultLimiter, timeout, limit.NoopLimitLogger{})
+
+		wg := sync.WaitGroup{}
+		wg.Add(acquireCount)
+
+		startCount := sync.WaitGroup{}
+		startCount.Add(acquireCount)
+
+		released := make(chan int, acquireCount)
+		startAcquire := make(chan struct{})
+		for i := 0; i < acquireCount; i++ {
+			go func(j int) {
+				startCount.Done()
+				defer wg.Done()
+				<-startAcquire
+
+				listener, ok := blockingLimiter.Acquire(context.Background())
+				if ok && listener != nil {
+					listener.OnSuccess()
+					released <- 1
+					return
+				}
+				released <- 0
+			}(i)
+		}
+
+		startCount.Wait()
+		b.StartTimer()
+		close(startAcquire)
+
+		wg.Wait()
+
+		b.StopTimer()
+		sumReleased := 0
+		for i := 0; i < acquireCount; i++ {
+			sumReleased += <-released
+		}
+		if sumReleased != acquireCount {
+			b.Fatal("not enough released")
+		}
+		b.StartTimer()
+	}
+
+	b.Run("limiter_contention", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			benchLimiter(b, 2, 10, 0)
+		}
+	})
+
+	b.Run("limiter_no_contention", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			benchLimiter(b, 100, 10, 0)
+		}
+	})
+
+	b.Run("limiter_contention_w_timeout", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			benchLimiter(b, 2, 10, 10*time.Minute)
+		}
+	})
+
+	b.Run("limiter_no_contention_w_timeout", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			benchLimiter(b, 100, 10, 10*time.Minute)
+		}
+	})
+
+}
+
 func TestBlockingLimiter(t *testing.T) {
 	t.Run("Unblocked", func(t2 *testing.T) {
 		asrt := assert.New(t2)

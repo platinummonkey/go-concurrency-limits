@@ -103,6 +103,17 @@ type CommonMetricSampler struct {
 	InFlightListener    MetricSampleListener
 }
 
+// NewCommonMetricSamplerOrNil will only create a new CommonMetricSampler if a valid registry is supplied
+func NewCommonMetricSamplerOrNil(registry MetricRegistry, limit Limit, name string, tags ...string) *CommonMetricSampler {
+	if registry == nil {
+		return nil
+	}
+	if _, ok := registry.(*EmptyMetricRegistry); ok {
+		return nil
+	}
+	return NewCommonMetricSampler(registry, limit, name, tags...)
+}
+
 // NewCommonMetricSampler will create a new CommonMetricSampler that will auto-instrument metrics
 func NewCommonMetricSampler(registry MetricRegistry, limit Limit, name string, tags ...string) *CommonMetricSampler {
 	if registry == nil {
@@ -124,6 +135,11 @@ func NewCommonMetricSampler(registry MetricRegistry, limit Limit, name string, t
 
 // Sample will sample the current sample for metric reporting.
 func (s *CommonMetricSampler) Sample(rtt int64, inFlight int, didDrop bool) {
+	// from noop metrics registry
+	if s == nil {
+		return
+	}
+
 	if didDrop {
 		s.DropCounterListener.AddSample(1.0)
 	}

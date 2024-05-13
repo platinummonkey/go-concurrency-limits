@@ -79,6 +79,6 @@ func (l *TracedLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop
 	l.limit.OnSample(startTime, rtt, inFlight, didDrop)
 }
 
-func (l TracedLimit) String() string {
+func (l *TracedLimit) String() string {
 	return fmt.Sprintf("TracedLimit{limit=%v, logger=%v}", l.limit, l.logger)
 }

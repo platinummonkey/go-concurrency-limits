@@ -10,72 +10,39 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/limit"
 )
 
-const longBlockingTimeout = time.Hour * 24 * 30 * 12 * 100 // 100 years
+// blockUntilSignaled will wait for context cancellation, an unblock signal or timeout
+// This method will return true if we were successfully signalled.
+func blockUntilSignaled(ctx context.Context, c *sync.Cond, timeout time.Duration) bool {
+	ready := make(chan struct{})
 
-// timeoutWaiter will wait for a timeout or unblock signal
-type timeoutWaiter struct {
-	timeoutSig chan struct{}
-	closerSig  chan struct{}
-	c          *sync.Cond
-	once       sync.Once
-	timeout    time.Duration
-}
-
-func newTimeoutWaiter(c *sync.Cond, timeout time.Duration) *timeoutWaiter {
-	return &timeoutWaiter{
-		timeoutSig: make(chan struct{}),
-		closerSig:  make(chan struct{}),
-		c:          c,
-		timeout:    timeout,
-	}
-}
-
-func (w *timeoutWaiter) start() {
-	// start two routines, one runner to signal, another blocking to wait and call unblock
-	var wg sync.WaitGroup
-	wg.Add(2)
 	go func() {
-		wg.Done()
-		w.run()
+		c.L.Lock()
+		defer c.L.Unlock()
+		close(ready)
 	}()
-	go func() {
-		wg.Done()
-		w.c.L.Lock()
-		w.c.Wait()
-		w.c.L.Unlock()
-		w.unblock()
-	}()
-	wg.Wait()
-}
 
-func (w *timeoutWaiter) run() {
-	if w.timeout > 0 {
+	if timeout > 0 {
+		// use NewTimer over time.After so that we don't have to
+		// wait for the timeout to elapse in order to release memory
+		timer := time.NewTimer(timeout)
+		defer timer.Stop()
+
 		select {
-		case <-w.closerSig:
-			close(w.timeoutSig)
-			return
-		case <-time.After(w.timeout):
-			// call unblock
-			close(w.timeoutSig)
-			return
+		case <-ctx.Done():
+			return false
+		case <-ready:
+			return true
+		case <-timer.C:
+			return false
 		}
 	}
+
 	select {
-	case <-w.closerSig:
-		close(w.timeoutSig)
-		return
+	case <-ctx.Done():
+		return false
+	case <-ready:
+		return true
 	}
-}
-
-func (w *timeoutWaiter) unblock() {
-	w.once.Do(func() {
-		close(w.closerSig)
-	})
-}
-
-// wait blocks until we've timed out
-func (w *timeoutWaiter) wait() <-chan struct{} {
-	return w.timeoutSig
 }
 
 // BlockingLimiter implements a Limiter that blocks the caller when the limit has been reached.  The caller is
@@ -95,8 +62,8 @@ func NewBlockingLimiter(
 	logger limit.Logger,
 ) *BlockingLimiter {
 	mu := sync.Mutex{}
-	if timeout <= 0 {
-		timeout = longBlockingTimeout
+	if timeout < 0 {
+		timeout = 0
 	}
 	if logger == nil {
 		logger = limit.NoopLimitLogger{}
@@ -111,12 +78,11 @@ func NewBlockingLimiter(
 
 // tryAcquire will block when attempting to acquire a token
 func (l *BlockingLimiter) tryAcquire(ctx context.Context) (core.Listener, bool) {
+
 	for {
-		l.c.L.Lock()
 		// if the context has already been cancelled, fail quickly
 		if err := ctx.Err(); err != nil {
 			l.logger.Debugf("context cancelled ctx=%v", ctx)
-			l.c.L.Unlock()
 			return nil, false
 		}
 
@@ -124,24 +90,22 @@ func (l *BlockingLimiter) tryAcquire(ctx context.Context) (core.Listener, bool) 
 		listener, ok := l.delegate.Acquire(ctx)
 		if ok && listener != nil {
 			l.logger.Debugf("delegate returned a listener ctx=%v", ctx)
-			l.c.L.Unlock()
 			return listener, true
 		}
-		l.c.L.Unlock()
 
 		// We have reached the limit so block until:
 		// - A token is released
 		// - A timeout
 		// - The context is cancelled
-		timeoutWaiter := newTimeoutWaiter(l.c, l.timeout)
-		timeoutWaiter.start()
-		select {
-		case <-timeoutWaiter.wait():
-			l.logger.Debugf("blocking released, trying again to acquire ctx=%v", ctx)
-		case <-ctx.Done():
-			l.logger.Debugf("blocking released, context's has been cancelled ctx=%v", ctx)
-			return nil, false
+		l.logger.Debugf("Blocking waiting for release or timeout ctx=%v", ctx)
+		if shouldAcquire := blockUntilSignaled(ctx, l.c, l.timeout); shouldAcquire {
+			listener, ok := l.delegate.Acquire(ctx)
+			if ok && listener != nil {
+				l.logger.Debugf("delegate returned a listener ctx=%v", ctx)
+				return listener, true
+			}
 		}
+		l.logger.Debugf("blocking released, trying again to acquire ctx=%v", ctx)
 	}
 }
 

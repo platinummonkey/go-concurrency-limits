@@ -106,7 +106,7 @@ func NewGradientLimitWithRegistry(
 		queueSizeSampleListener:    registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricWindowQueueSize, name), tags...),
 	}
 
-	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
+	l.commonSampler = core.NewCommonMetricSamplerOrNil(registry, l, name, tags...)
 	return l
 }
 

@@ -156,7 +156,7 @@ func NewGradient2Limit(
 		registry:                registry,
 	}
 
-	l.commonSampler = core.NewCommonMetricSampler(registry, l, name, tags...)
+	l.commonSampler = core.NewCommonMetricSamplerOrNil(registry, l, name, tags...)
 
 	return l, nil
 }
