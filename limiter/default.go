@@ -48,6 +48,30 @@ func (l *DefaultListener) OnSuccess() {
 		},
 	)
 
+	l.updateLimit(endTime, current)
+}
+
+// OnIgnore is called to indicate the operation failed before any meaningful RTT measurement could be made and
+// should be ignored to not introduce an artificially low RTT.
+func (l *DefaultListener) OnIgnore() {
+	atomic.AddInt64(l.inFlight, -1)
+	l.token.Release()
+}
+
+// OnDropped is called to indicate the request failed and was dropped due to being rejected by an external limit or
+// hitting a timeout.  Loss based Limit implementations will likely do an aggressive reducing in limit when this
+// happens.
+func (l *DefaultListener) OnDropped() {
+	atomic.AddInt64(l.inFlight, -1)
+	l.token.Release()
+	_, current := l.limiter.updateAndGetSample(func(window measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow {
+		return *(window.AddDroppedSample(-1, int(l.currentMaxInFlight)))
+	})
+
+	l.updateLimit(time.Now().UnixNano(), current)
+}
+
+func (l *DefaultListener) updateLimit(endTime int64, current measurements.ImmutableSampleWindow) {
 	if endTime > l.nextUpdateTime {
 		// double check just to be sure
 		l.limiter.mu.Lock()
@@ -81,25 +105,6 @@ func (l *DefaultListener) OnSuccess() {
 			}
 		}
 	}
-
-}
-
-// OnIgnore is called to indicate the operation failed before any meaningful RTT measurement could be made and
-// should be ignored to not introduce an artificially low RTT.
-func (l *DefaultListener) OnIgnore() {
-	atomic.AddInt64(l.inFlight, -1)
-	l.token.Release()
-}
-
-// OnDropped is called to indicate the request failed and was dropped due to being rejected by an external limit or
-// hitting a timeout.  Loss based Limit implementations will likely do an aggressive reducing in limit when this
-// happens.
-func (l *DefaultListener) OnDropped() {
-	atomic.AddInt64(l.inFlight, -1)
-	l.token.Release()
-	l.limiter.updateAndGetSample(func(window measurements.ImmutableSampleWindow) measurements.ImmutableSampleWindow {
-		return *(window.AddDroppedSample(-1, int(l.currentMaxInFlight)))
-	})
 }
 
 // DefaultLimiter is a Limiter that combines a plugable limit algorithm and enforcement strategy to enforce concurrency
