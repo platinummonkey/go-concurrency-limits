@@ -18,6 +18,7 @@ func blockUntilSignaled(ctx context.Context, c *sync.Cond, timeout time.Duration
 	go func() {
 		c.L.Lock()
 		defer c.L.Unlock()
+		c.Wait()
 		close(ready)
 	}()
 
