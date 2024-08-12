@@ -268,3 +268,31 @@ func TestBlockingLimiter(t *testing.T) {
 		asrt.InDelta(4, sumReleased, 1.0, "expected roughly half to succeed")
 	})
 }
+
+func TestBlockUntilSignaled(t *testing.T) {
+	asrt := assert.New(t)
+	var mu sync.Mutex
+	cond := sync.NewCond(&mu)
+
+	// Use a channel to control test completion
+	done := make(chan struct{})
+
+	// Create a context for testing cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+
+	const waitTime = 50 * time.Millisecond
+	go func() {
+		time.Sleep(waitTime * 2)
+		cond.Signal()
+		close(done)
+	}()
+
+	timeout := 500 * time.Millisecond
+	now := time.Now()
+	signalled := blockUntilSignaled(ctx, cond, timeout)
+	asrt.True(signalled)
+	asrt.True(time.Since(now) >= waitTime, "expected to wait at least 50ms")
+
+	<-done
+	cancel()
+}
