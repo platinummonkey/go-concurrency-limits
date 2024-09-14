@@ -222,7 +222,7 @@ func (l *Gradient2Limit) OnSample(startTime int64, rtt int64, inFlight int, didD
 	newLimit = math.Max(float64(l.minLimit), math.Min(float64(l.maxLimit), newLimit))
 
 	if newLimit != l.estimatedLimit && l.logger.IsDebugEnabled() {
-		l.logger.Debugf("new limit=%0.2f, shortRTT=%d ms, longRTT=%d ms, queueSize=%d, gradient=%0.2f",
+		l.logger.Debugf("new limit=%0.2f, shortRTT=%0.2f ms, longRTT=%0.2f ms, queueSize=%d, gradient=%0.2f",
 			newLimit, shortRTT/1e6, longRTT/1e6, queueSize, gradient)
 	}
 
