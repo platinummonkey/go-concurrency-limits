@@ -42,7 +42,7 @@ func nextProbeCountdown(probeInterval int) int {
 	if probeInterval == ProbeDisabled {
 		return ProbeDisabled
 	}
-	return probeInterval + rand.Int()
+	return probeInterval + rand.Intn(probeInterval)
 }
 
 // NewGradientLimitWithRegistry will create a new GradientLimitWithRegistry.
