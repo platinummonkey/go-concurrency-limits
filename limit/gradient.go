@@ -184,7 +184,7 @@ func (l *GradientLimit) OnSample(startTime int64, rtt int64, inFlight int, didDr
 		return
 	} else {
 		// Normal update to the limit
-		newLimit = l.estimatedLimit * gradient * float64(queueSize)
+		newLimit = l.estimatedLimit*gradient + float64(queueSize)
 	}
 
 	if newLimit < l.estimatedLimit {

@@ -78,6 +78,6 @@ func TestGradientLimit(t *testing.T) {
 		for i := 0; i < 100; i++ {
 			l.OnSample(int64(i*10+3030), 1, 5, false)
 		}
-		asrt.Equal(16, l.EstimatedLimit())
+		asrt.Equal(12, l.EstimatedLimit())
 	})
 }
