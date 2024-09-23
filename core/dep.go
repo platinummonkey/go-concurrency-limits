@@ -28,7 +28,7 @@ const (
 )
 
 // PrefixMetricWithName will prefix a given name with the metric name in the form "<name>.<metric>"
-func PrefixMetricWithName(metric, name string) string {
+var PrefixMetricWithName = func(metric, name string) string {
 	if name == "" {
 		name = "default"
 	}
