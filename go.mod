@@ -4,7 +4,7 @@ go 1.21
 toolchain go1.22.9
 
 require (
-	github.com/DataDog/datadog-go/v5 v5.5.0
+	github.com/DataDog/datadog-go/v5 v5.6.0
 	github.com/golang/protobuf v1.5.4
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 	github.com/stretchr/testify v1.10.0
