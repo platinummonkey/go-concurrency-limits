@@ -187,7 +187,6 @@ type QueueBlockingLimiter struct {
 	maxBacklogSize      uint64
 	maxBacklogTimeout   time.Duration
 	backlogEvictDoneCtx bool
-	ordering            QueueOrdering
 
 	backlog *queue
 	mu      sync.RWMutex
@@ -243,7 +242,7 @@ func NewQueueBlockingLimiterFromConfig(
 		backlogEvictDoneCtx: config.BacklogEvictDoneCtx,
 		backlog: &queue{
 			list:     list.New(),
-			ordering: OrderingFIFO,
+			ordering: config.Ordering,
 		},
 	}
 
@@ -342,5 +341,5 @@ func (l *QueueBlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool
 
 func (l *QueueBlockingLimiter) String() string {
 	return fmt.Sprintf("QueueBlockingLimiter{delegate=%v, maxBacklogSize=%d, maxBacklogTimeout=%v, ordering=%v}",
-		l.delegate, l.maxBacklogSize, l.maxBacklogTimeout, l.ordering)
+		l.delegate, l.maxBacklogSize, l.maxBacklogTimeout, l.backlog.ordering)
 }
