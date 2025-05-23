@@ -343,6 +343,7 @@ func TestQueueBlockingLimiter_Lifo(t *testing.T) {
 			MaxBacklogTimeout: 0,
 			Ordering:          OrderingLIFO,
 		})
+		asrt.True(limiter.backlog.ordering == OrderingLIFO)
 		asrt.NotNil(limiter)
 		asrt.True(strings.Contains(limiter.String(), "QueueBlockingLimiter{delegate=DefaultLimiter{"))
 	})
