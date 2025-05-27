@@ -86,6 +86,29 @@ func (q *queue) push(ctx context.Context) (EvictFunc, <-chan core.Listener) {
 	return q.evictionFunc(listElement), releaseChan
 }
 
+var errQueueIsFull = fmt.Errorf("queue is full")
+
+func (q *queue) pushWithCapacity(ctx context.Context, maxCapacity uint64) (EvictFunc, <-chan core.Listener, error) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+
+	// Restrict backlog size so the queue doesn't grow unbounded during an outage
+	if uint64(q.list.Len()) >= maxCapacity {
+		return nil, nil, errQueueIsFull
+	}
+
+	releaseChan := make(chan core.Listener)
+
+	e := &queueElement{ctx: ctx, releaseChan: releaseChan}
+
+	// We always push to the front of the list regardless of
+	// queue order. As usage of the list will always assume
+	// Front == newest and Back == Oldest
+	listElement := q.list.PushFront(e)
+
+	return q.evictionFunc(listElement), releaseChan, nil
+}
+
 func (q *queue) pop() *queueElement {
 	evict, ele := q.peek()
 	if evict != nil {
@@ -274,15 +297,13 @@ func (l *QueueBlockingLimiter) tryAcquire(ctx context.Context) core.Listener {
 		return listener
 	}
 
-	// Restrict backlog size so the queue doesn't grow unbounded during an outage
-	if l.backlog.len() >= l.maxBacklogSize {
-		return nil
-	}
-
 	// Create a holder for a listener and block until a listener is released by another
 	// operation.  Holders will be unblocked in LIFO or FIFO order depending on whatever
 	// ordering was configured when backlog was instantiated
-	evict, eventReleaseChan := l.backlog.push(ctx)
+	evict, eventReleaseChan, err := l.backlog.pushWithCapacity(ctx, l.maxBacklogSize)
+	if err != nil {
+		return nil
+	}
 
 	// We're using a nil chan so that we
 	// can avoid needing to duplicate the
