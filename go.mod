@@ -1,8 +1,6 @@
 module github.com/platinummonkey/go-concurrency-limits
 
-go 1.24.0
-
-toolchain go1.24.1
+go 1.25.0
 
 require (
 	github.com/DataDog/datadog-go/v5 v5.8.3
@@ -10,7 +8,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20180503174638-e2704e165165
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/net v0.49.0
-	golang.org/x/time v0.14.0
+	golang.org/x/time v0.15.0
 	google.golang.org/grpc v1.79.1
 )
 
