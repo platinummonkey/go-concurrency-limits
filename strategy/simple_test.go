@@ -7,6 +7,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestSimpleStrategyFactory(t *testing.T) {
+	t.Parallel()
+
+	t.Run("CreatesStrategyWithGivenLimit", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		factory := NewSimpleStrategyFactory()
+		asrt.NotNil(factory)
+		s := factory(42)
+		asrt.NotNil(s)
+		asrt.Equal(42, s.(*SimpleStrategy).GetLimit())
+	})
+
+	t.Run("EachCallCreatesIndependentStrategy", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		factory := NewSimpleStrategyFactory()
+		s1 := factory(10)
+		s2 := factory(20)
+		asrt.Equal(10, s1.(*SimpleStrategy).GetLimit())
+		asrt.Equal(20, s2.(*SimpleStrategy).GetLimit())
+	})
+}
+
 func TestSimpleStrategy(t *testing.T) {
 	t.Parallel()
 

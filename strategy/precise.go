@@ -88,3 +88,20 @@ func (s *PreciseStrategy) String() string {
 	defer s.mu.Unlock()
 	return fmt.Sprintf("PreciseStrategy{inFlight=%d, limit=%d}", s.inFlight, s.limit)
 }
+
+// NewPreciseStrategyFactory returns a StrategyFactory that creates PreciseStrategy instances.
+// Use with NewDefaultLimiterWithFactory so the strategy's limit is always derived from
+// the Limit algorithm.
+func NewPreciseStrategyFactory() core.StrategyFactory {
+	return func(initialLimit int) core.Strategy {
+		return NewPreciseStrategy(initialLimit)
+	}
+}
+
+// NewPreciseStrategyWithMetricRegistryFactory returns a StrategyFactory that creates
+// PreciseStrategy instances registered with the given MetricRegistry.
+func NewPreciseStrategyWithMetricRegistryFactory(registry core.MetricRegistry, tags ...string) core.StrategyFactory {
+	return func(initialLimit int) core.Strategy {
+		return NewPreciseStrategyWithMetricRegistry(initialLimit, registry, tags...)
+	}
+}
