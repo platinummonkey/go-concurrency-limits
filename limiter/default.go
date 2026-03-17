@@ -145,6 +145,31 @@ func NewDefaultLimiterWithDefaults(
 	)
 }
 
+// NewDefaultLimiterWithFactory creates a new DefaultLimiter using a StrategyFactory.
+// Unlike NewDefaultLimiter, the strategy is always created with the Limit algorithm's
+// EstimatedLimit as its initial value, making it impossible to accidentally pass a
+// mismatched initial limit. This matches the design of the Java concurrency-limits
+// library where the strategy is always constructed inside the limiter from the same
+// initial limit as the Limit algorithm.
+func NewDefaultLimiterWithFactory(
+	l core.Limit,
+	minWindowTime int64,
+	maxWindowTime int64,
+	minRTTThreshold int64,
+	windowSize int,
+	strategyFactory core.StrategyFactory,
+	logger limit.Logger,
+	registry core.MetricRegistry,
+) (*DefaultLimiter, error) {
+	if l == nil {
+		return nil, fmt.Errorf("limit must be provided")
+	}
+	if strategyFactory == nil {
+		return nil, fmt.Errorf("strategyFactory must be provided")
+	}
+	return NewDefaultLimiter(l, minWindowTime, maxWindowTime, minRTTThreshold, windowSize, strategyFactory(l.EstimatedLimit()), logger, registry)
+}
+
 // NewDefaultLimiter creates a new DefaultLimiter.
 func NewDefaultLimiter(
 	limit core.Limit,

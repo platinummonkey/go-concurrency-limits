@@ -79,3 +79,20 @@ func (s *SimpleStrategy) GetBusyCount() int {
 func (s *SimpleStrategy) String() string {
 	return fmt.Sprintf("SimpleStrategy{inFlight=%d, limit=%d}", atomic.LoadInt32(s.inFlight), s.limit)
 }
+
+// NewSimpleStrategyFactory returns a StrategyFactory that creates SimpleStrategy instances.
+// Use with NewDefaultLimiterWithFactory so the strategy's limit is always derived from
+// the Limit algorithm.
+func NewSimpleStrategyFactory() core.StrategyFactory {
+	return func(initialLimit int) core.Strategy {
+		return NewSimpleStrategy(initialLimit)
+	}
+}
+
+// NewSimpleStrategyWithMetricRegistryFactory returns a StrategyFactory that creates
+// SimpleStrategy instances registered with the given MetricRegistry.
+func NewSimpleStrategyWithMetricRegistryFactory(registry core.MetricRegistry, tags ...string) core.StrategyFactory {
+	return func(initialLimit int) core.Strategy {
+		return NewSimpleStrategyWithMetricRegistry(initialLimit, registry, tags...)
+	}
+}

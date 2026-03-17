@@ -66,3 +66,10 @@ type Strategy interface {
 	// SetLimit will update the strategy with a new limit.
 	SetLimit(limit int)
 }
+
+// StrategyFactory is a function that creates a Strategy initialized with the given limit.
+// Use StrategyFactory with NewDefaultLimiterWithFactory to ensure the strategy's initial
+// limit is always derived from the Limit algorithm, preventing mismatches between the two.
+// This matches the design of the Java concurrency-limits library where the strategy is
+// always constructed internally from the same initial limit as the Limit algorithm.
+type StrategyFactory func(initialLimit int) Strategy

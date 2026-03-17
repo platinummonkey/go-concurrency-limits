@@ -7,6 +7,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestPreciseStrategyFactory(t *testing.T) {
+	t.Parallel()
+
+	t.Run("CreatesStrategyWithGivenLimit", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		factory := NewPreciseStrategyFactory()
+		asrt.NotNil(factory)
+		s := factory(42)
+		asrt.NotNil(s)
+		asrt.Equal(42, s.(*PreciseStrategy).GetLimit())
+	})
+
+	t.Run("EachCallCreatesIndependentStrategy", func(t2 *testing.T) {
+		t2.Parallel()
+		asrt := assert.New(t2)
+		factory := NewPreciseStrategyFactory()
+		s1 := factory(10)
+		s2 := factory(20)
+		asrt.Equal(10, s1.(*PreciseStrategy).GetLimit())
+		asrt.Equal(20, s2.(*PreciseStrategy).GetLimit())
+	})
+}
+
 func TestPreciseStrategy(t *testing.T) {
 	t.Parallel()
 
