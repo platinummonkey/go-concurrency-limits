@@ -15,13 +15,13 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     # Setup Go
     - name: Setup Go
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v5
       with:
-        go-version: '1.21.0' # The Go version to download (if necessary) and use.
+        go-version-file: 'go.mod'
 
     # Install all the dependencies
     - name: Install dependencies
