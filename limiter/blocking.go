@@ -133,6 +133,6 @@ func (l *BlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	}, true
 }
 
-func (l BlockingLimiter) String() string {
+func (l *BlockingLimiter) String() string {
 	return fmt.Sprintf("BlockingLimiter{delegate=%v}", l.delegate)
 }

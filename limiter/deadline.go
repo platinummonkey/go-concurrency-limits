@@ -125,6 +125,6 @@ func (l *DeadlineLimiter) Acquire(ctx context.Context) (listener core.Listener, 
 }
 
 // String implements Stringer for easy debugging.
-func (l DeadlineLimiter) String() string {
+func (l *DeadlineLimiter) String() string {
 	return fmt.Sprintf("DeadlineLimiter{delegate=%v}", l.delegate)
 }
