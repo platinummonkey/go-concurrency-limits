@@ -1,23 +1,22 @@
 package limiter
 
 import (
-	"sync"
-
 	"github.com/platinummonkey/go-concurrency-limits/core"
 )
 
-// DelegateListener wraps the wrapped Limiter's Listener to simply delegate as a wrapper.
+// DelegateListener wraps a core.Listener and optionally calls an onRelease
+// callback after each completion event.  BlockingLimiter uses this to wake
+// goroutines that are waiting for a slot to become available.
 type DelegateListener struct {
 	delegateListener core.Listener
-	c                *sync.Cond
+	onRelease        func() // called after every On* method; may be nil
 }
 
-// NewDelegateListener creates a new wrapped listener.
+// NewDelegateListener creates a new DelegateListener that delegates all calls
+// to the wrapped listener without any additional release notification.
 func NewDelegateListener(delegateListener core.Listener) *DelegateListener {
-	mu := sync.Mutex{}
 	return &DelegateListener{
 		delegateListener: delegateListener,
-		c:                sync.NewCond(&mu),
 	}
 }
 
@@ -26,22 +25,25 @@ func NewDelegateListener(delegateListener core.Listener) *DelegateListener {
 // happens.
 func (l *DelegateListener) OnDropped() {
 	l.delegateListener.OnDropped()
-	// unblock
-	l.c.Broadcast()
+	if l.onRelease != nil {
+		l.onRelease()
+	}
 }
 
 // OnIgnore is called to indicate the operation failed before any meaningful RTT measurement could be made and
 // should be ignored to not introduce an artificially low RTT.
 func (l *DelegateListener) OnIgnore() {
 	l.delegateListener.OnIgnore()
-	// unblock
-	l.c.Broadcast()
+	if l.onRelease != nil {
+		l.onRelease()
+	}
 }
 
 // OnSuccess is called as a notification that the operation succeeded and internally measured latency should be
 // used as an RTT sample.
 func (l *DelegateListener) OnSuccess() {
 	l.delegateListener.OnSuccess()
-	// unblock
-	l.c.Broadcast()
+	if l.onRelease != nil {
+		l.onRelease()
+	}
 }
