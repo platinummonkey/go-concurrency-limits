@@ -10,50 +10,20 @@ import (
 	"github.com/platinummonkey/go-concurrency-limits/limit"
 )
 
-// blockUntilSignaled will wait for context cancellation, an unblock signal or timeout
-// This method will return true if we were successfully signalled.
-func blockUntilSignaled(ctx context.Context, c *sync.Cond, timeout time.Duration) bool {
-	ready := make(chan struct{})
-
-	go func() {
-		c.L.Lock()
-		defer c.L.Unlock()
-		c.Wait()
-		close(ready)
-	}()
-
-	if timeout > 0 {
-		// use NewTimer over time.After so that we don't have to
-		// wait for the timeout to elapse in order to release memory
-		timer := time.NewTimer(timeout)
-		defer timer.Stop()
-
-		select {
-		case <-ctx.Done():
-			return false
-		case <-ready:
-			return true
-		case <-timer.C:
-			return false
-		}
-	}
-
-	select {
-	case <-ctx.Done():
-		return false
-	case <-ready:
-		return true
-	}
-}
-
 // BlockingLimiter implements a Limiter that blocks the caller when the limit has been reached.  The caller is
 // blocked until the limiter has been released.  This limiter is commonly used in batch clients that use the limiter
 // as a back-pressure mechanism.
+//
+// Internally a notify-channel is used instead of sync.Cond to avoid the lost-wakeup race: the current channel is
+// captured before each failed acquisition attempt, so a release that fires between the failed acquire and the
+// blocking select will already have closed the channel, causing the select to proceed immediately.
 type BlockingLimiter struct {
 	logger   limit.Logger
 	delegate core.Limiter
-	c        *sync.Cond
 	timeout  time.Duration
+
+	mu     sync.Mutex
+	notify chan struct{} // closed (and replaced) whenever a token is released
 }
 
 // NewBlockingLimiter will create a new blocking limiter
@@ -62,7 +32,6 @@ func NewBlockingLimiter(
 	timeout time.Duration,
 	logger limit.Logger,
 ) *BlockingLimiter {
-	mu := sync.Mutex{}
 	if timeout < 0 {
 		timeout = 0
 	}
@@ -72,20 +41,43 @@ func NewBlockingLimiter(
 	return &BlockingLimiter{
 		logger:   logger,
 		delegate: delegate,
-		c:        sync.NewCond(&mu),
 		timeout:  timeout,
+		notify:   make(chan struct{}),
 	}
+}
+
+// currentNotify returns the current notification channel under the lock.
+// Callers must capture this BEFORE the failed acquire attempt so that a
+// release between the attempt and the blocking select is not missed.
+func (l *BlockingLimiter) currentNotify() <-chan struct{} {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.notify
+}
+
+// broadcastRelease closes the current notify channel (waking all waiters) and
+// installs a fresh one for the next round of waiters.
+func (l *BlockingLimiter) broadcastRelease() {
+	l.mu.Lock()
+	old := l.notify
+	l.notify = make(chan struct{})
+	l.mu.Unlock()
+	close(old)
 }
 
 // tryAcquire will block when attempting to acquire a token
 func (l *BlockingLimiter) tryAcquire(ctx context.Context) (core.Listener, bool) {
-
 	for {
 		// if the context has already been cancelled, fail quickly
 		if err := ctx.Err(); err != nil {
 			l.logger.Debugf("context cancelled ctx=%v", ctx)
 			return nil, false
 		}
+
+		// Capture the notify channel BEFORE trying to acquire.
+		// If a release fires between here and the select below the channel
+		// will already be closed, so the select proceeds without blocking.
+		notify := l.currentNotify()
 
 		// try to acquire a new token and return immediately if successful
 		listener, ok := l.delegate.Acquire(ctx)
@@ -95,15 +87,28 @@ func (l *BlockingLimiter) tryAcquire(ctx context.Context) (core.Listener, bool) 
 		}
 
 		// We have reached the limit so block until:
-		// - A token is released
+		// - A token is released (notify channel is closed)
 		// - A timeout
 		// - The context is cancelled
 		l.logger.Debugf("Blocking waiting for release or timeout ctx=%v", ctx)
-		if shouldAcquire := blockUntilSignaled(ctx, l.c, l.timeout); shouldAcquire {
-			listener, ok := l.delegate.Acquire(ctx)
-			if ok && listener != nil {
-				l.logger.Debugf("delegate returned a listener ctx=%v", ctx)
-				return listener, true
+		if l.timeout > 0 {
+			timer := time.NewTimer(l.timeout)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return nil, false
+			case <-notify:
+				timer.Stop()
+				// token was released, loop and retry
+			case <-timer.C:
+				// per-attempt timeout: loop back and check context before retrying
+			}
+		} else {
+			select {
+			case <-ctx.Done():
+				return nil, false
+			case <-notify:
+				// token was released, loop and retry
 			}
 		}
 		l.logger.Debugf("blocking released, trying again to acquire ctx=%v", ctx)
@@ -124,7 +129,7 @@ func (l *BlockingLimiter) Acquire(ctx context.Context) (core.Listener, bool) {
 	l.logger.Debugf("acquired, returning listener ctx=%v", ctx)
 	return &DelegateListener{
 		delegateListener: delegateListener,
-		c:                l.c,
+		onRelease:        l.broadcastRelease,
 	}, true
 }
 
