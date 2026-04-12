@@ -39,6 +39,9 @@ func TestFixedPool(t *testing.T) {
 		wg.Add(1)
 		go func(c int) {
 			defer wg.Done()
+			// OrderingRandom uses BlockingLimiter with timeout=0, which blocks
+			// indefinitely on a non-cancelled context until a slot is available.
+			// l is guaranteed non-nil here because context.Background() is never cancelled.
 			l, _ := p.Acquire(context.WithValue(context.Background(), testKeyID, fmt.Sprint(c)))
 			log.Printf("acquired now, sleeping - %d\n", c)
 			time.Sleep(time.Millisecond * 100)
@@ -74,7 +77,13 @@ func TestFIFOFixedPool(t *testing.T) {
 		wg.Add(1)
 		go func(c int) {
 			defer wg.Done()
-			l, _ := p.Acquire(context.WithValue(context.Background(), testKeyID, fmt.Sprint(c)))
+			// maxBacklog=0 means no queuing: Acquire may return nil if the limit is
+			// already saturated and no backlog slot is available.
+			l, ok := p.Acquire(context.WithValue(context.Background(), testKeyID, fmt.Sprint(c)))
+			if !ok {
+				log.Printf("not acquired (backlog full) - %d\n", c)
+				return
+			}
 			log.Printf("acquired now, sleeping - %d\n", c)
 			time.Sleep(time.Millisecond * 100)
 			l.OnSuccess()
@@ -109,7 +118,13 @@ func TestLIFOFixedPool(t *testing.T) {
 		wg.Add(1)
 		go func(c int) {
 			defer wg.Done()
-			l, _ := p.Acquire(context.WithValue(context.Background(), testKeyID, fmt.Sprint(c)))
+			// maxBacklog=0 means no queuing: Acquire may return nil if the limit is
+			// already saturated and no backlog slot is available.
+			l, ok := p.Acquire(context.WithValue(context.Background(), testKeyID, fmt.Sprint(c)))
+			if !ok {
+				log.Printf("not acquired (backlog full) - %d\n", c)
+				return
+			}
 			log.Printf("acquired now, sleeping - %d\n", c)
 			time.Sleep(time.Millisecond * 100)
 			l.OnSuccess()
