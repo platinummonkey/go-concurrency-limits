@@ -20,7 +20,6 @@ type WindowedLimit struct {
 
 	delegate      core.Limit
 	sample        *measurements.ImmutableSampleWindow
-	listeners     []core.LimitChangeListener
 	registry      core.MetricRegistry
 	commonSampler *core.CommonMetricSampler
 
@@ -91,10 +90,9 @@ func NewWindowedLimit(
 		nextUpdateTime:  0,
 		windowSize:      windowSize,
 		minRTTThreshold: minRTTThreshold,
-		delegate:        delegate,
-		sample:          measurements.NewDefaultImmutableSampleWindow(),
-		listeners:       make([]core.LimitChangeListener, 0),
-		registry:        registry,
+		delegate: delegate,
+		sample:   measurements.NewDefaultImmutableSampleWindow(),
+		registry: registry,
 	}
 	l.commonSampler = core.NewCommonMetricSamplerOrNil(registry, l, name, tags...)
 	return l, nil
@@ -109,18 +107,9 @@ func (l *WindowedLimit) EstimatedLimit() int {
 }
 
 // NotifyOnChange will register a callback to receive notification whenever the limit is updated to a new value.
+// WindowedLimit delegates change notifications to its inner delegate limit, which fires the callbacks directly.
 func (l *WindowedLimit) NotifyOnChange(consumer core.LimitChangeListener) {
-	l.mu.Lock()
-	l.listeners = append(l.listeners, consumer)
 	l.delegate.NotifyOnChange(consumer)
-	l.mu.Unlock()
-}
-
-// notifyListeners will call the callbacks on limit changes
-func (l *WindowedLimit) notifyListeners(newLimit int) {
-	for _, listener := range l.listeners {
-		listener(newLimit)
-	}
 }
 
 // OnSample the concurrency limit using a new rtt sample.

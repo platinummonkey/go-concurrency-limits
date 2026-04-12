@@ -82,10 +82,7 @@ func TestLifoBlockingLimiter(t *testing.T) {
 		wg.Add(10)
 		for i := 0; i < 10; i++ {
 			if i > 0 {
-				select {
-				case <-startupReady:
-					// proceed
-				}
+				<-startupReady
 			}
 			go func(j int) {
 				startupReady <- true

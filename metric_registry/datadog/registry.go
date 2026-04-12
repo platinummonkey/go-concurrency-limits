@@ -169,9 +169,7 @@ func (r *MetricRegistry) RegisterDistribution(
 	ID string,
 	tags ...string,
 ) core.MetricSampleListener {
-	if strings.HasPrefix(ID, ".") {
-		ID = strings.TrimPrefix(ID, ".")
-	}
+	ID = strings.TrimPrefix(ID, ".")
 
 	// only add once
 	if l, ok := r.registeredListeners[ID]; ok {
@@ -192,9 +190,7 @@ func (r *MetricRegistry) RegisterTiming(
 	ID string,
 	tags ...string,
 ) core.MetricSampleListener {
-	if strings.HasPrefix(ID, ".") {
-		ID = strings.TrimPrefix(ID, ".")
-	}
+	ID = strings.TrimPrefix(ID, ".")
 
 	// only add once
 	if l, ok := r.registeredListeners[ID]; ok {
@@ -215,9 +211,7 @@ func (r *MetricRegistry) RegisterCount(
 	ID string,
 	tags ...string,
 ) core.MetricSampleListener {
-	if strings.HasPrefix(ID, ".") {
-		ID = strings.TrimPrefix(ID, ".")
-	}
+	ID = strings.TrimPrefix(ID, ".")
 
 	// only add once
 	if l, ok := r.registeredListeners[ID]; ok {
@@ -239,9 +233,7 @@ func (r *MetricRegistry) RegisterGauge(
 	supplier core.MetricSupplier,
 	tags ...string,
 ) {
-	if strings.HasPrefix(ID, ".") {
-		ID = strings.TrimPrefix(ID, ".")
-	}
+	ID = strings.TrimPrefix(ID, ".")
 
 	r.mu.Lock()
 	defer r.mu.Unlock()

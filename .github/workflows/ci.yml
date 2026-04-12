@@ -15,11 +15,11 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4
 
     # Setup Go
     - name: Setup Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff  # v5
       with:
         go-version-file: 'go.mod'
         cache: true
@@ -30,14 +30,15 @@ jobs:
       run: |
         go version
         go mod download
-        go install golang.org/x/lint/golint@latest
-        go install golang.org/x/tools/cmd/cover@latest
 
-    # Run vet & lint on the code
-    - name: Fmt, Lint, Vet, Test
+    # Run lint on the code
+    - name: Lint
+      uses: golangci/golangci-lint-action@9fae48acfc02a90574d7c304a1758ef9895495fa  # v7
+
+    # Fmt and Vet
+    - name: Fmt and Vet
       run: |
         go fmt ./...
-        golint ./...
         go vet ./...
 
     # Run testing on the code
@@ -45,4 +46,3 @@ jobs:
       run: go test -v -race -covermode=atomic -coverprofile=covprofile ./...
 
     # todo: fix coverage reports...
-

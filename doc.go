@@ -1,2 +1,2 @@
-// Package provides primitives for concurrency control in complex systems.
-package main
+// Package goconcurrencylimits provides primitives for concurrency control in complex systems.
+package goconcurrencylimits

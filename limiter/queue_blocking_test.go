@@ -156,10 +156,7 @@ func TestBlockingLimiter_Fifo(t *testing.T) {
 		wg.Add(10)
 		for i := 0; i < 10; i++ {
 			if i > 0 {
-				select {
-				case <-startupReady:
-					// proceed
-				}
+				<-startupReady
 			}
 			go func(j int) {
 				startupReady <- true
@@ -383,10 +380,7 @@ func TestQueueBlockingLimiter_Lifo(t *testing.T) {
 		wg.Add(10)
 		for i := 0; i < 10; i++ {
 			if i > 0 {
-				select {
-				case <-startupReady:
-					// proceed
-				}
+				<-startupReady
 			}
 			go func(j int) {
 				startupReady <- true
@@ -441,14 +435,16 @@ func TestQueueBlockingLimiter_Lifo(t *testing.T) {
 		)
 		asrt.NotNil(limiter)
 
-		// acquire all tokens first
-		listeners := make([]core.Listener, 0)
+		// acquire all tokens first; the slice keeps all 10 listeners alive,
+		// saturating the limiter so the goroutines below are queued in the backlog.
+		listeners := make([]core.Listener, 10)
 		for i := 0; i < 10; i++ {
 			listener, ok := limiter.Acquire(context.Background())
 			asrt.True(ok)
 			asrt.NotNil(listener)
-			listeners = append(listeners, listener)
+			listeners[i] = listener
 		}
+		defer func() { _ = listeners }()
 
 		wg := sync.WaitGroup{}
 		wg.Add(5)
