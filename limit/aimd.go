@@ -95,7 +95,6 @@ func (l *AIMDLimit) OnSample(startTime int64, rtt int64, inFlight int, didDrop b
 		l.limit += l.increaseBy
 		l.notifyListeners(l.limit)
 	}
-	return
 }
 
 // BackOffRatio return the current back-off-ratio for the AIMDLimit

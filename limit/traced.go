@@ -35,7 +35,7 @@ type BuiltinLimitLogger struct{}
 
 // Debugf debug formatted log
 func (l BuiltinLimitLogger) Debugf(msg string, params ...interface{}) {
-	log.Println(fmt.Sprintf(msg, params...))
+	log.Printf(msg, params...)
 }
 
 // IsDebugEnabled will return true if debug is enabled. BuiltinLimitLogger is always `true`

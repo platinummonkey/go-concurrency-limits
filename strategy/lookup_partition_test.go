@@ -340,7 +340,7 @@ func TestLookupPartitionStrategy(t *testing.T) {
 
 		// remove a partition
 		strategy.RemovePartition("test1")
-		binLimit, err = strategy.BinLimit("test1")
+		_, err = strategy.BinLimit("test1")
 		asrt.Error(err)
 	})
 }

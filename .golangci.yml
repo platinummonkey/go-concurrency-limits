@@ -1,0 +1,27 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      # statsd metric calls are fire-and-forget by design; errors indicate an
+      # unreachable daemon and are non-fatal to the application using this library.
+      exclude-functions:
+        - (*github.com/DataDog/datadog-go/v5/statsd.Client).Distribution
+        - (*github.com/DataDog/datadog-go/v5/statsd.Client).TimeInMilliseconds
+        - (*github.com/DataDog/datadog-go/v5/statsd.Client).Count
+        - (*github.com/DataDog/datadog-go/v5/statsd.Client).Gauge
+  exclusions:
+    rules:
+      # Examples are demonstration/sample code. Standard Go idioms like
+      # `defer conn.Close()` and fire-and-forget poll calls are acceptable there.
+      - path: "examples"
+        linters:
+          - errcheck
+          - staticcheck

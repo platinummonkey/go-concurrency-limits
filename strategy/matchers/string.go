@@ -23,7 +23,7 @@ func StringPredicateMatcher(matchString string, caseInsensitive bool) func(ctx c
 			strVal, ok := val.(string)
 			if ok {
 				if caseInsensitive {
-					return strings.ToLower(strVal) == strings.ToLower(matchString)
+					return strings.EqualFold(strVal, matchString)
 				}
 				return strVal == matchString
 			}

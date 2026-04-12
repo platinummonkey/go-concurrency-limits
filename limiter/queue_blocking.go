@@ -37,7 +37,6 @@ const (
 type queueElement struct {
 	ctx         context.Context
 	releaseChan chan<- core.Listener
-	next, prev  *queueElement
 }
 
 func (e *queueElement) setListener(listener core.Listener) bool {
