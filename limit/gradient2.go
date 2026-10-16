@@ -54,6 +54,7 @@ type Gradient2Limit struct {
 	minLimit                int
 	queueSizeFunc           func(limit int) int
 	smoothing               float64
+	rttTolerance            float64
 	commonSampler           *core.CommonMetricSampler
 	longRTTSampleListener   core.MetricSampleListener
 	shortRTTSampleListener  core.MetricSampleListener
@@ -110,6 +111,37 @@ func NewGradient2Limit(
 	registry core.MetricRegistry,
 	tags ...string,
 ) (*Gradient2Limit, error) {
+	return NewGradient2LimitWithRTTTolerance(
+		name,
+		initialLimit,
+		maxConurrency,
+		minLimit,
+		queueSizeFunc,
+		smoothing,
+		longWindow,
+		1.0,
+		logger,
+		registry,
+		tags...,
+	)
+}
+
+// NewGradient2LimitWithRTTTolerance will create a new Gradient2Limit with a configurable RTT tolerance.
+// rttTolerance >= 1.0 indicates how much short term RTT growth over the long term baseline is acceptable
+// before the gradient is reduced. E.g. 2.0 tolerates a 2x increase. 1.0 preserves the default behavior.
+func NewGradient2LimitWithRTTTolerance(
+	name string,
+	initialLimit int, // Initial limit used by the limiter
+	maxConurrency int,
+	minLimit int,
+	queueSizeFunc func(limit int) int,
+	smoothing float64,
+	longWindow int,
+	rttTolerance float64,
+	logger Logger,
+	registry core.MetricRegistry,
+	tags ...string,
+) (*Gradient2Limit, error) {
 	if smoothing > 1.0 || smoothing < 0 {
 		smoothing = 0.2
 	}
@@ -121,6 +153,9 @@ func NewGradient2Limit(
 	}
 	if longWindow < 0 {
 		longWindow = 100
+	}
+	if rttTolerance < 1.0 {
+		rttTolerance = 1.0
 	}
 	if logger == nil {
 		logger = NoopLimitLogger{}
@@ -146,6 +181,7 @@ func NewGradient2Limit(
 		minLimit:                minLimit,
 		queueSizeFunc:           queueSizeFunc,
 		smoothing:               smoothing,
+		rttTolerance:            rttTolerance,
 		shortRTT:                &measurements.SingleMeasurement{},
 		longRTT:                 measurements.NewExponentialAverageMeasurement(longWindow, 10),
 		longRTTSampleListener:   registry.RegisterDistribution(core.PrefixMetricWithName(core.MetricMinRTT, name), tags...),
@@ -216,7 +252,7 @@ func (l *Gradient2Limit) OnSample(startTime int64, rtt int64, inFlight int, didD
 	// so set to 1.0 to indicate no queuing.  Otherwise calculate the slope and don't
 	// allow it to be reduced by more than half to avoid aggressive load-shedding due to
 	// outliers.
-	gradient := math.Max(0.5, math.Min(1.0, longRTT/shortRTT))
+	gradient := math.Max(0.5, math.Min(1.0, l.rttTolerance*longRTT/shortRTT))
 	newLimit := l.estimatedLimit*gradient + float64(queueSize)
 	newLimit = l.estimatedLimit*(1-l.smoothing) + newLimit*l.smoothing
 	newLimit = math.Max(float64(l.minLimit), math.Min(float64(l.maxLimit), newLimit))
